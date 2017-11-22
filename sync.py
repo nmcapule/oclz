@@ -359,7 +359,7 @@ class SyncClient:
             logging.warn(e)
             return 0
 
-        return current_stocks - cached_stocks
+        return current_stocks - cached_stocks, current_stocks
 
     def _RecordSystemStocksDelta(self, system, model, stocks_delta, current_stocks):
         """Adds a record of the diff between cached and current stocks of an item
