@@ -11,7 +11,7 @@ from lazada import LazadaClient
 from opencart import OpencartClient
 
 
-_SCRIPT_VERSION = '0.3'
+_SCRIPT_VERSION = '0.4'
 
 _SYSTEM_OPENCART = 'OPENCART'
 _SYSTEM_LAZADA = 'LAZADA'
@@ -357,7 +357,7 @@ class SyncClient:
                 system, model).stocks
         except Exception as e:
             logging.warn(e)
-            return 0
+            return 0, 0
 
         return current_stocks - cached_stocks, current_stocks
 
