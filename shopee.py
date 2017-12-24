@@ -43,6 +43,21 @@ class ShopeeProduct(object):
     return self._modified
 
 
+class ShopeeRequestResult:
+  """Describes a request result from querying Shopee."""
+
+  def __init__(
+      self, attachment=None, endpoint='', payload='', result=None, error_code=0,
+      error_description=''):
+    self.attachment = attachment
+    self.endpoint = endpoint
+    self.payload = payload
+
+    self.result = result
+    self.error_code = error_code
+    self.error_description = error_description
+
+
 class ShopeeClient:
   """Implements a Shopee Client."""
 
@@ -75,9 +90,27 @@ class ShopeeClient:
     session = requests.Session()
     r = session.post(domain, headers=headers, data=payload)
 
-    return json.loads(r.content)
+    # TODO(nmcapule): Handle value error - invalid JSON error.    
+    parsed = json.loads(r.content)
+
+    if r.status_code >= 300:
+      error_code = r.status_code
+      error_description = parsed['error']
+
+      return ShopeeRequestResult(
+          endpoint=endpoint, payload=payload, error_code=error_code,
+          error_description=error_description)
+    else:
+      return ShopeeRequestResult(
+          endpoint=endpoint, payload=payload, result=parsed)
 
   def Refresh(self):
+    """Refreshes product records from Lazada.
+
+    TODO(nmcapule): Handle communication error.
+    Raises:
+      CommunicationError: Cannot communicate properly with Lazada.
+    """
     ENTRIES_PER_PAGE = 100
     offset = 0
     meta_items = []
@@ -87,9 +120,9 @@ class ShopeeClient:
         'pagination_entries_per_page': ENTRIES_PER_PAGE,
         'pagination_offset': offset,  
       }))
-      meta_items.extend(result['items'])
+      meta_items.extend(result.result['items'])
 
-      if result['more']:
+      if result.result['more']:
         offset += ENTRIES_PER_PAGE
       else:
         break
@@ -102,11 +135,10 @@ class ShopeeClient:
       result = self._Request('/api/v1/item/get', self._ConstructPayload({
         'item_id': item_id  
       }))
-      result = result['item']
 
+      raw_item = result.result['item']
       item = ShopeeProduct(
-          item_id=result['item_id'], model=result['item_sku'], quantity=result['stock'])
-
+          item_id=raw_item['item_id'], model=raw_item['item_sku'], quantity=raw_item['stock'])
       items.append(item)
 
       logging.info(
@@ -139,7 +171,49 @@ class ShopeeClient:
     """Returns a copy of internal dictionary."""
     return copy.deepcopy(self._products)
 
-import pprint
+
+  def UpdateProductStocks(self, model, stocks):
+    """Updates a single products stock.
+
+    Args:
+      model: str, The sku / model of the product to be updated.
+      stocks: int, The new number of stocks of the product.
+
+    Raises:
+      NotFoundError: The sku / model of the product is not in Lazada.
+      MultipleResultsError: The sku / model is not unique in Lazada.
+      CommunicationError: Cannot communicate properly with Lazada.
+    """
+    product = self.GetProduct(model)
+    product.stocks = stocks
+
+    return self.UpdateProducts([product])[0]
+
+  def UpdateProducts(self, products):
+    """Updates Shopee records from the given list of products.
+
+    Args:
+      products: list<ShopeeProduct>, The products with quantity changes to
+          upload.
+
+    Raises:
+      CommunicationError: Cannot communicate properly with Shopee.
+    """
+    results = []
+    for p in products:
+      if not p.modified:
+        continue
+
+      # Create XML request
+      result = self._Request('/api/v1/items/update_stock', self._ConstructPayload({
+        'item_id': p.item_id,
+        'stock': p.stocks,
+      }))
+      result.attachment = p
+
+      results.append(result)
+
+    return results
 
 if __name__ == '__main__':
   logging.basicConfig(level=logging.DEBUG)
@@ -150,9 +224,12 @@ if __name__ == '__main__':
 
   client = ShopeeClient(shop_id, partner_id, partner_key)
 
-  items = client.ListProducts()
-  for item in items:
-    pprint.pprint(item)
+  r = client.UpdateProductStocks('DFR0431', 3)
+  logging.info('%s', r.error_description)
 
-  # p = client.GetProduct('WHC0011RF')
+  # items = client.ListProducts()
+  # for item in items:
+  #   logging.info(item)
+
+  # p = client.GetProduct('DFR0431')
   # logging.info('%s %d %d' % (p.model, p.quantity, p.stocks,))
