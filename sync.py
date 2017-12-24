@@ -5,17 +5,20 @@ import sqlite3
 
 import lazada
 import opencart
+import shopee
 
 from errors import Error, NotFoundError, MultipleResultsError, CommunicationError, UnhandledSystemError
 from lazada import LazadaClient
 from opencart import OpencartClient
+from shopee import ShopeeClient
 
 
-_SCRIPT_VERSION = '0.4'
+_SCRIPT_VERSION = '0.5'
 
 _SYSTEM_OPENCART = 'OPENCART'
 _SYSTEM_LAZADA = 'LAZADA'
-_EXTERNAL_SYSTEMS = [_SYSTEM_LAZADA, _SYSTEM_OPENCART]
+_SYSTEM_SHOPEE = 'SHOPEE'
+_EXTERNAL_SYSTEMS = [_SYSTEM_LAZADA, _SYSTEM_OPENCART, _SYSTEM_SHOPEE]
 
 _ERROR_SUCCESS = 0
 
@@ -108,9 +111,10 @@ class InventorySystemCacheItem(InventoryItem):
 class SyncClient:
     """Implements syncing."""
 
-    def __init__(self, dbpath=None, opencart_client=None, lazada_client=None):
+    def __init__(self, dbpath=None, opencart_client=None, lazada_client=None, shopee_client=None):
         self._opencart_client = opencart_client
         self._lazada_client = lazada_client
+        self._shopee_client = shopee_client
 
         self._db_client = self._Connect(dbpath or _DEFAULT_DB_PATH)
         self.sync_batch_id = -1
@@ -191,7 +195,7 @@ class SyncClient:
           system: str, The system code.
 
         Returns:
-          LazadaClient or OpencartClient, The client to use.
+          LazadaClient or OpencartClient or ShopeeClient, The client to use.
 
         Raises:
           UnhandledSystemError, The given system code not yet supported.
@@ -200,6 +204,8 @@ class SyncClient:
             return self._lazada_client
         elif system == _SYSTEM_OPENCART:
             return self._opencart_client
+        elif system == _SYSTEM_SHOPEE:
+            return self._shopee_client
         else:
             raise UnhandledSystemError('System is not handled: %s' % system)
 
@@ -213,6 +219,7 @@ class SyncClient:
           UnhandledSystemError, The given system code not yet supported.
           lazada.CommunicationError: Cannot communicate with LAzada
           opencart.CommunicationError: Cannot communicate with opencart
+          shopee.CommunicationError: Cannot communicate with opencart
         """
         client = self._System(system)
 
@@ -334,15 +341,16 @@ class SyncClient:
         self._db_client.commit()
 
     def _CollectExternalProductModels(self):
-        """Returns a list of all product models from the external sources."""
-
+        """Returns a list of all unique product models from the external sources."""
         models = set([])
 
-        for p in self._opencart_client.ListProducts():
-            models.add(p.model)
-
-        for p in self._lazada_client.ListProducts():
-            models.add(p.model)
+        for system in _EXTERNAL_SYSTEMS:
+            client = self._System(system)
+            for p in client.ListProducts():
+                # Skip falsy product models, ie: undefined, empty strings
+                if not p:
+                    continue
+                models.add(p.model)
 
         return models
 
@@ -494,8 +502,13 @@ def main():
         domain='https://circuit.rocks/admin/index.php?route=',
         username='',
         password='')
+    shopee_client = ShopeeClient(
+        shop_id=0,
+        partner_id=0,
+        partner_key='')
     sync_client = SyncClient(
-        opencart_client=opencart_client, lazada_client=lazada_client)
+        opencart_client=opencart_client, lazada_client=lazada_client,
+        shopee_client=shopee_client)
 
     with sync_client:
         # sync_client.PurgeAndSetup(_SYSTEM_OPENCART)
