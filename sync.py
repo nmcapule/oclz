@@ -348,7 +348,7 @@ class SyncClient:
             client = self._System(system)
             for p in client.ListProducts():
                 # Skip falsy product models, ie: undefined, empty strings
-                if not p:
+                if not p.model:
                     continue
                 models.add(p.model)
 
