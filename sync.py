@@ -340,11 +340,14 @@ class SyncClient:
 
         self._db_client.commit()
 
-    def _CollectExternalProductModels(self):
+    def _CollectExternalProductModels(self, filter_system=None):
         """Returns a list of all unique product models from the external sources."""
         models = set([])
 
         for system in _EXTERNAL_SYSTEMS:
+            if filter_system and system != filter_system:
+                continue
+
             client = self._System(system)
             for p in client.ListProducts():
                 # Skip falsy product models, ie: undefined, empty strings
@@ -353,6 +356,13 @@ class SyncClient:
                 models.add(p.model)
 
         return models
+
+    def ProductAvailability(self):
+        """Returns an object declaring product availability on each of the systems."""
+        lookup = {}
+        for system in _EXTERNAL_SYSTEMS:
+            lookup[system] = set(self._CollectExternalProductModels(system))
+        return lookup
 
     def _CalculateSystemStocksDelta(self, system, model):
         """Calculates the delta between last saw and current external system's
@@ -491,6 +501,22 @@ class SyncClient:
                         'Skipping external update due to multiple: ' + str(e))
 
 
+def UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client):
+    """Creates mising products from Shopee using data from Lazada."""
+
+    lookup = sync_client.ProductAvailability()
+    lazada_items = lookup[_SYSTEM_LAZADA]
+    shopee_items = lookup[_SYSTEM_SHOPEE]
+
+    items_to_upload = lazada_items - shopee_items
+    for model in items_to_upload:
+        try:
+            lazada_product = lazada_client.GetProductDirect(model)
+            shopee_item_id = shopee_client.CreateProduct(lazada_product)
+        except Exception as e:
+            logging.error('Oh no error syncing %s: %s' % (model, str(e)))
+
+
 def main():
     logging.basicConfig(level=logging.DEBUG)
 
@@ -511,8 +537,8 @@ def main():
         shopee_client=shopee_client)
 
     with sync_client:
-        # sync_client.PurgeAndSetup(_SYSTEM_OPENCART)
         sync_client.Sync()
+        UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client)
 
 
 if __name__ == '__main__':

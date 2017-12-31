@@ -216,6 +216,40 @@ class ShopeeClient:
 
         return results
 
+    def CreateProduct(self, product):
+        """Creates an entry for the product.
+
+        Args:
+          product: Object, The product to upload. Lifted from Lazada:
+                {
+                    'name': attrs.find('name').text,
+                    'description': attrs.find('short_description').text,
+                    'model': sku.find('SellerSku').text,
+                    'stocks': int(sku.find('Available').text) or int(sku.find('quantity').text),
+                    'price': float(sku.find('price').text),
+                    'images': images,
+                    'weight': float(sku.find('package_weight').text) or 0.5,
+                }
+        """
+
+        result = self._Request('/api/v1/item/add', self._ConstructPayload({
+            'category_id': 5067,
+            'name': product['name'],
+            'description': product['description'],
+            'price': product['price'],
+            'stock': product['stocks'],
+            'images': product['images'],
+            'logistics': {
+                'logistic_id': 40013, # Black Arrow Integrated
+                'enabled': 1,         # Clear this up.
+            },
+        }))
+
+        if result.error_code:
+          raise CommunicationError('Error uploading product: %s' % result.error_description)
+
+        return result.result['item_id']
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
@@ -225,12 +259,12 @@ if __name__ == '__main__':
 
     client = ShopeeClient(shop_id, partner_id, partner_key)
 
-    r = client.UpdateProductStocks('DFR0431', 3)
-    logging.info('%s', r.error_description)
+    items = client.ListProducts()
+    for item in items:
+      logging.info(item)
 
-    # items = client.ListProducts()
-    # for item in items:
-    #   logging.info(item)
+    p = client.GetProduct('DFR0431')
+    logging.info('%s %d %d' % (p.model, p.quantity, p.stocks,))
 
-    # p = client.GetProduct('DFR0431')
-    # logging.info('%s %d %d' % (p.model, p.quantity, p.stocks,))
+    # Default CategoryID: 5067
+    # Logistics: {u'logistic_name': u'Black Arrow Integrated', u'logistic_id': 40013}
