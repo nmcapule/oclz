@@ -61,13 +61,14 @@ class ShopeeRequestResult:
 class ShopeeClient:
     """Implements a Shopee Client."""
 
-    def __init__(self, shop_id, partner_id, partner_key):
+    def __init__(self, shop_id, partner_id, partner_key, with_refresh=True):
         self._shop_id = shop_id
         self._partner_id = partner_id
         self._partner_key = partner_key
         self._products = []
 
-        self.Refresh()
+        if with_refresh:
+            self.Refresh()
 
     def _ConstructPayload(self, input={}):
         input_copy = copy.deepcopy(input)
@@ -105,11 +106,11 @@ class ShopeeClient:
                 endpoint=endpoint, payload=payload, result=parsed)
 
     def Refresh(self):
-        """Refreshes product records from Lazada.
+        """Refreshes product records from Shopee.
 
         TODO(nmcapule): Handle communication error.
         Raises:
-          CommunicationError: Cannot communicate properly with Lazada.
+          CommunicationError: Cannot communicate properly with Shopee.
         """
         ENTRIES_PER_PAGE = 100
         offset = 0
@@ -156,8 +157,8 @@ class ShopeeClient:
           ShopeeProduct, The product being searched.
 
         Raises:
-          NotFoundError: The sku / model of the product is not in Lazada.
-          MultipleResultsError: The sku / model is not unique in Lazada.
+          NotFoundError: The sku / model of the product is not in Shopee.
+          MultipleResultsError: The sku / model is not unique in Shopee.
         """
         results = [p for p in self._products if p.model == model]
         if not results:
@@ -180,9 +181,9 @@ class ShopeeClient:
           stocks: int, The new number of stocks of the product.
 
         Raises:
-          NotFoundError: The sku / model of the product is not in Lazada.
-          MultipleResultsError: The sku / model is not unique in Lazada.
-          CommunicationError: Cannot communicate properly with Lazada.
+          NotFoundError: The sku / model of the product is not in Shopee.
+          MultipleResultsError: The sku / model is not unique in Shopee.
+          CommunicationError: Cannot communicate properly with Shopee.
         """
         product = self.GetProduct(model)
         product.stocks = stocks
