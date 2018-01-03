@@ -3,6 +3,7 @@
 import copy
 import logging
 import requests
+import string
 import urllib
 import xml.etree.ElementTree
 
@@ -200,7 +201,8 @@ class LazadaClient:
                 images = []
                 for img in sku.find('Images').findall('Image'):
                     if img.text:
-                        images.append(img.text)
+                        imgurl = string.replace(img.text, 'catalog.jpg', 'zoom.jpg')
+                        images.append(imgurl)
 
                 p = {
                     'name': attrs.find('name').text,
