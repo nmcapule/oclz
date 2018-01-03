@@ -516,6 +516,9 @@ def UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client):
         except Exception as e:
             logging.error('Oh no error syncing %s: %s' % (model, str(e)))
 
+        # Only 1 item per cycle
+        break
+
 
 def main():
     logging.basicConfig(level=logging.DEBUG)

@@ -94,9 +94,9 @@ class ShopeeClient:
         # TODO(nmcapule): Handle value error - invalid JSON error.
         parsed = json.loads(r.content)
 
-        if r.status_code >= 300:
+        if r.status_code >= 300 or ('error' in parsed and len(parsed['error']) > 0):
             error_code = r.status_code
-            error_description = parsed['error']
+            error_description = parsed['msg']
 
             return ShopeeRequestResult(
                 endpoint=endpoint, payload=payload, error_code=error_code,
@@ -231,18 +231,22 @@ class ShopeeClient:
                     'weight': float(sku.find('package_weight').text) or 0.5,
                 }
         """
-
         result = self._Request('/api/v1/item/add', self._ConstructPayload({
             'category_id': 5067,
             'name': product['name'],
             'description': product['description'],
+            'item_sku': product['model'],
             'price': product['price'],
             'stock': product['stocks'],
-            'images': product['images'],
-            'logistics': {
+            'weight': product['weight'],
+            'images': [
+                {'url': 'https:%s' % img}
+                for img in product['images']],
+            'logistics': [{
                 'logistic_id': 40013, # Black Arrow Integrated
-                'enabled': 1,         # Clear this up.
-            },
+                'enabled': True,      # Clear this up.
+                'size_id': 2,         # Medium
+            }],
         }))
 
         if result.error_code:

@@ -209,7 +209,7 @@ class LazadaClient:
                     'stocks': int(sku.find('Available').text) or int(sku.find('quantity').text),
                     'price': float(sku.find('price').text),
                     'images': images,
-                    'weight': float(sku.find('package_weight').text) or 0.5,
+                    'weight': float(sku.find('package_weight').text) or 0.9,
                     # 'category': 'PENDING',
                     # 'logistics': 'PENDING', # Not in lazada
                 }
@@ -227,7 +227,7 @@ class LazadaClient:
         elif len(items) > 1:
             raise MultipleResultsError('Multiple results for %s' % model)
 
-        return items
+        return items[0]
 
     def GetProduct(self, model):
         """Returns a copy of a product detail.
