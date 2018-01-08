@@ -238,14 +238,14 @@ class ShopeeClient:
             'item_sku': product['model'],
             'price': product['price'],
             'stock': product['stocks'],
-            'weight': product['weight'],
+            'weight': 0.2, # product['weight'],
             'images': [
                 {'url': 'https:%s' % img}
                 for img in product['images']],
             'logistics': [{
                 'logistic_id': 40013, # Black Arrow Integrated
                 'enabled': True,      # Clear this up.
-                'size_id': 2,         # Medium
+                'size_id': 1,         # Small
             }],
         }))
 
