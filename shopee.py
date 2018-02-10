@@ -96,7 +96,7 @@ class ShopeeClient:
 
         if r.status_code >= 300 or ('error' in parsed and len(parsed['error']) > 0):
             error_code = r.status_code
-            error_description = parsed['msg']
+            error_description = parsed.get('msg', parsed.get('error', 'request error'))
 
             return ShopeeRequestResult(
                 endpoint=endpoint, payload=payload, error_code=error_code,
@@ -137,6 +137,9 @@ class ShopeeClient:
                 'item_id': item_id
             }))
 
+            if not result.result:
+                logging.info('Error loading %s: %s' % (raw_item['item_sku'], result.error_description))
+                continue
             raw_item = result.result['item']
             item = ShopeeProduct(
                 item_id=raw_item['item_id'], model=raw_item['item_sku'], quantity=raw_item['stock'])

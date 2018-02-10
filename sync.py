@@ -516,19 +516,16 @@ def UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client):
         except Exception as e:
             logging.error('Oh no error syncing %s: %s' % (model, str(e)))
 
-        # Only 1 item per cycle
-        break
-
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
 
     lazada_client = LazadaClient(
-        domain='https://api.sellercenter.lazada.com.ph?',
+        domain='',
         useremail='',
         api_key='')
     opencart_client = OpencartClient(
-        domain='https://circuit.rocks/admin/index.php?route=',
+        domain='',
         username='',
         password='')
     shopee_client = ShopeeClient(
