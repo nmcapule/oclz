@@ -522,8 +522,9 @@ def main():
 
     lazada_client = LazadaClient(
         domain='',
-        useremail='',
-        api_key='')
+        app_key='',
+        app_secret='',
+        access_token='')
     opencart_client = OpencartClient(
         domain='',
         username='',
