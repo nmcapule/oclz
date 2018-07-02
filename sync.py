@@ -24,6 +24,19 @@ _ERROR_SUCCESS = 0
 
 _DEFAULT_DB_PATH = './skeo_sync.db'
 
+_CREATE_TABLE_OAUTH2 = """
+CREATE TABLE IF NOT EXISTS oauth2 (
+    system TEXT,
+    access_token TEXT,
+    refresh_token TEXT,
+    created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_on DATETIME
+)
+"""
+_DROP_TABLE_OAUTH2 = """
+DROP TABLE oauth2
+"""
+
 _CREATE_TABLE_SYNC_BATCH = """
 CREATE TABLE IF NOT EXISTS sync_batch (
   sync_batch_id INTEGER PRIMARY KEY,
@@ -106,6 +119,95 @@ class InventorySystemCacheItem(InventoryItem):
         self.system = system
         self.stocks = stocks
         self.last_sync_batch_id = last_sync_batch_id
+
+
+class Oauth2Service:
+    """Implements tracking of Oauth2 tokens."""
+
+    def __init__(self, dbpath=None):
+        self._db_client = self._Connect(dbpath or _DEFAULT_DB_PATH)
+
+        self._Setup()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, unused_exc_type, unused_exc_value, unused_traceback):
+        self.Close()
+
+    def _Setup(self):
+        """Creates all table in the database."""
+        cursor = self._db_client.cursor()
+        cursor.execute(_CREATE_TABLE_OAUTH2)
+        self._db_client.commit()
+
+    def _Drop(self):
+        """Drops all table in the database."""
+        cursor = self._db_client.cursor()
+        cursor.execute(_DROP_TABLE_OAUTH2)
+        self._db_client.commit()
+
+    def _Connect(self, dbpath):
+        """Creates a connection to sqlite3 database."""
+        return sqlite3.connect(dbpath)
+
+    def _Disconnect(self):
+        """Dsiconnects from sqlite3 datbase."""
+        self._db_client.close()
+        self._db_client = None
+
+    def Close(self):
+        """Safely closes connection to sqlite3 database."""
+        if self._db_client:
+            self._Disconnect()
+
+    def SaveOauth2Tokens(self, system, access_token, refresh_token, expires_on):
+        """Saves the oauth2 tokens of a system to the database."""
+        cursor = self._db_client.cursor()
+
+        cursor.execute(
+            """
+            UPDATE oauth2
+            SET access_token=?, refresh_token=?, expires_on=?, created_on=CURRENT_TIMESTAMP
+            WHERE system=?
+            """, (access_token, refresh_token, expires_on, system,))
+
+        if cursor.rowcount == 0:
+            cursor.execute(
+                """
+                INSERT INTO oauth2 (system, access_token, refresh_token, expires_on)
+                VALUES (?, ?, ?, ?)
+                """, (system, access_token, refresh_token, expires_on,))
+
+        self._db_client.commit()
+
+    def GetOauth2Tokens(self, system):
+        """Retrieves latest tokens from a system.
+
+        Returns:
+            dict, detail of Oauth2 tokens for a system.
+        """
+
+        cursor = self._db_client.cursor()
+
+        cursor.execute(
+            """
+            SELECT system, access_token, refresh_token, created_on, expires_on
+            FROM oauth2
+            WHERE system=?
+            """, (system,))
+
+        result = cursor.fetchone()
+        if result is None:
+            raise NotFoundError('Oauth2 for system not found: %s' % system)
+
+        return {
+            'system': result[0],
+            'access_token': result[1],
+            'refresh_token': result[2],
+            'created_on': result[3],
+            'expires_on': result[4],
+        }
 
 
 class SyncClient:
@@ -517,29 +619,77 @@ def UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client):
             logging.error('Oh no error syncing %s: %s' % (model, str(e)))
 
 
+def CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code):
+    """Creates Oauth2 tokens of the client for Lazada Open API platform."""
+    result = lazada_client._Request(
+        '/auth/token/create',
+        {'code': code},
+        domain='https://auth.lazada.com/rest',
+        raw=True)
+    if result.error_code != _ERROR_SUCCESS:
+        raise CommunicationError(
+            'Error creating oauth2: %s' % result.error_description)
+
+    update_oauth2_dict = result.result
+
+    oauth2_service.SaveOauth2Tokens(
+        _SYSTEM_LAZADA,
+        update_oauth2_dict['access_token'],
+        update_oauth2_dict['refresh_token'],
+        update_oauth2_dict['expires_in'])
+
+
+def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client):
+    """Updates Oauth2 tokens of the client for Lazada Open API platform."""
+    lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
+
+    result = lazada_client._Request(
+        '/auth/token/refresh',
+        {'refresh_token': lazada_oauth2_dict['refresh_token']},
+        domain='https://auth.lazada.com/rest',
+        raw=True)
+    if result.error_code != _ERROR_SUCCESS:
+        raise CommunicationError(
+            'Error updating oauth2: %s' % result.error_description)
+
+    update_oauth2_dict = result.result
+
+    oauth2_service.SaveOauth2Tokens(
+        _SYSTEM_LAZADA,
+        update_oauth2_dict['access_token'],
+        update_oauth2_dict['refresh_token'],
+        update_oauth2_dict['expires_in'])
+
+
 def main():
     logging.basicConfig(level=logging.DEBUG)
 
-    lazada_client = LazadaClient(
-        domain='',
-        app_key='',
-        app_secret='',
-        access_token='')
-    opencart_client = OpencartClient(
-        domain='',
-        username='',
-        password='')
-    shopee_client = ShopeeClient(
-        shop_id=0,
-        partner_id=0,
-        partner_key='')
-    sync_client = SyncClient(
-        opencart_client=opencart_client, lazada_client=lazada_client,
-        shopee_client=shopee_client)
+    oauth2_service = Oauth2Service()
+    with oauth2_service:
+        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
+        lazada_client = LazadaClient(
+            domain='',
+            app_key='',
+            app_secret='',
+            access_token=lazada_oauth2_dict['access_token'])
+        # CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code='')
+        opencart_client = OpencartClient(
+            domain='',
+            username='',
+            password='')
+        shopee_client = ShopeeClient(
+            shop_id=0,
+            partner_id=0,
+            partner_key='')
+        sync_client = SyncClient(
+            opencart_client=opencart_client, lazada_client=lazada_client,
+            shopee_client=shopee_client)
 
-    with sync_client:
-        sync_client.Sync()
-        UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client)
+        with sync_client:
+            sync_client.Sync()
+            UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client)
+
+        UpdateLazadaOauth2Tokens(oauth2_service, lazada_client)
 
 
 if __name__ == '__main__':

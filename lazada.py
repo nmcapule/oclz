@@ -88,7 +88,7 @@ class LazadaClient:
     def access_token(self, value):
         self._access_token = value
 
-    def _Request(self, endpoint, api_parameters={}, payload=''):
+    def _Request(self, endpoint, api_parameters={}, payload='', domain=None, raw=False):
         """Creates and sends a request to the given Lazada action.
 
         Raises:
@@ -102,14 +102,16 @@ class LazadaClient:
             'timestamp': str(int(round(time.time()))) + '000',
             'partner_id': 'lazop-sdk-python-20180424'
         }
-        if self._access_token:
+        if self._access_token and not raw:
             parameters['access_token'] = self._access_token
         if payload:
             parameters['payload'] = payload
         parameters.update(api_parameters)
         parameters['sign'] = sign(self._app_secret, endpoint, parameters)
 
-        url = self._domain + endpoint
+        if domain is None:
+            domain = self._domain
+        url = domain + endpoint
 
         # urllib.urlencode(sorted(parameters.items()))
 
@@ -129,8 +131,12 @@ class LazadaClient:
 
             return result
         else:
-            result = LazadaRequestResult(
-                endpoint=endpoint, payload=payload, result=res.get('data', ''))
+            if raw:
+                result = LazadaRequestResult(
+                    endpoint=endpoint, payload=payload, result=res)
+            else:
+                result = LazadaRequestResult(
+                    endpoint=endpoint, payload=payload, result=res.get('data', ''))
 
             return result
 
