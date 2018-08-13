@@ -1,7 +1,10 @@
 """Package for syncing implementation between shops."""
 
+import configparser
 import logging
+import os
 import sqlite3
+import sys
 
 import lazada
 import opencart
@@ -23,6 +26,7 @@ _EXTERNAL_SYSTEMS = [_SYSTEM_LAZADA, _SYSTEM_OPENCART, _SYSTEM_SHOPEE]
 _ERROR_SUCCESS = 0
 
 _DEFAULT_DB_PATH = './skeo_sync.db'
+_DEFAULT_CONF_PATH = 'config.ini'
 
 _CREATE_TABLE_OAUTH2 = """
 CREATE TABLE IF NOT EXISTS oauth2 (
@@ -360,6 +364,38 @@ class SyncClient:
         return InventoryItem(
             model=result[0], stocks=result[1], last_sync_batch_id=result[2])
 
+    def _GetInventoryItems(self):
+        """Retrieves all items from the inventory.
+
+        Returns:
+            Array<InventoryItem>, List of inventory items
+        """
+        cursor = self._db_client.cursor()
+
+        cursor.execute(
+            """
+            SELECT model, stocks, last_sync_batch_id
+            FROM inventory
+            """)
+
+        result = []
+        for p in cursor.fetchall():
+            result.append(InventoryItem(model=p[0], stocks=p[1], last_sync_batch_id=p[2]))
+        return result
+
+    def _DeleteInventoryItems(self, models):
+        """Deletes the given models from the inventory table."""
+        cursor = self._db_client.cursor()
+        for model in models:
+            logging.info("Deleting item `%s` from inventory table" % model)
+            cursor.execute(
+                """
+                DELETE FROM inventory
+                WHERE model=?
+                """, (model,))
+
+        self._db_client.commit()
+
     def _UpsertInventoryItem(self, item):
         """Updates a single InventoryItem record.
 
@@ -661,9 +697,40 @@ def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client):
         update_oauth2_dict['expires_in'])
 
 
-def main():
-    logging.basicConfig(level=logging.DEBUG)
+def ListDeletedSystemModels(sync_client, system):
+    """Returns item models that no longer exist in a system but does so in the DB.
+    
+    Raises:
+      CommunicationError, Unexpected number of external product models.
+    """
+    if sync_client._System(system) is None:
+        raise CommunicationError('%s is not initialized!' % system)
 
+    cached_products = sync_client._GetInventoryItems()
+    cached_models = set([p.model for p in cached_products])
+
+    online_models = set(sync_client._CollectExternalProductModels(system))
+    if len(online_models) == 0:
+        raise CommunicationError('Unexpected number of external product models!')
+
+    return cached_models - online_models
+
+
+def DoCleanupProcedure(config):
+    """Kicks off the process to remove records that no longer exists in OC."""
+    opencart_client = OpencartClient(
+        domain=config['Opencart']['Domain'],
+        username=config['Opencart']['Username'],
+        password=config['Opencart']['Password'])
+    sync_client = SyncClient(opencart_client=opencart_client)
+
+    with sync_client:
+        deleted_models = ListDeletedSystemModels(sync_client, _SYSTEM_OPENCART)
+        sync_client._DeleteInventoryItems(deleted_models)
+
+
+def DoSyncProcedure(config):
+    """Kicks off the process to sync product quantities between systems."""
     oauth2_service = Oauth2Service()
     with oauth2_service:
         lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
@@ -692,5 +759,25 @@ def main():
         UpdateLazadaOauth2Tokens(oauth2_service, lazada_client)
 
 
+def Config(filename):
+    """Reads and returns the ConfigParser instance."""
+    config = configparser.ConfigParser()
+    config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)), filename))
+
+    return config
+
+
+def main(argv):
+    logging.basicConfig(level=logging.DEBUG)
+    config = Config(_DEFAULT_CONF_PATH)
+
+    if len(argv) == 1 or argv[1] == '--sync':
+        DoSyncProcedure(config)
+    elif argv[1] == '--cleanup':
+        DoCleanupProcedure(config)
+    elif argv[1] == '--chkconfig':
+        logging.info(config.sections())
+
+
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
