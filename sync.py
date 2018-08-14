@@ -771,7 +771,10 @@ def main(argv):
     logging.basicConfig(level=logging.DEBUG)
     config = Config(_DEFAULT_CONF_PATH)
 
-    if len(argv) == 1 or argv[1] == '--sync':
+    if len(argv) == 1:
+        DoCleanupProcedure(config)
+        DoSyncProcedure(config)
+    elif argv[1] == '--sync':
         DoSyncProcedure(config)
     elif argv[1] == '--cleanup':
         DoCleanupProcedure(config)
