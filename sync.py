@@ -1,6 +1,6 @@
 """Package for syncing implementation between shops."""
 
-import configparser
+import ConfigParser
 import logging
 import os
 import sqlite3
@@ -719,9 +719,9 @@ def ListDeletedSystemModels(sync_client, system):
 def DoCleanupProcedure(config):
     """Kicks off the process to remove records that no longer exists in OC."""
     opencart_client = OpencartClient(
-        domain=config['Opencart']['Domain'],
-        username=config['Opencart']['Username'],
-        password=config['Opencart']['Password'])
+        domain=config.get('Opencart', 'Domain'),
+        username=config.get('Opencart', 'Username'),
+        password=config.get('Opencart', 'Password'))
     sync_client = SyncClient(opencart_client=opencart_client)
 
     with sync_client:
@@ -735,19 +735,19 @@ def DoSyncProcedure(config):
     with oauth2_service:
         lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
         lazada_client = LazadaClient(
-            domain='',
-            app_key='',
-            app_secret='',
+            domain=config.get('Lazada', 'Domain'),
+            app_key=config.get('Lazada', 'AppKey'),
+            app_secret=config.get('Lazada', 'AppSecret'),
             access_token=lazada_oauth2_dict['access_token'])
         # CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code='')
         opencart_client = OpencartClient(
-            domain='',
-            username='',
-            password='')
+            domain=config.get('Opencart', 'Domain'),
+            username=config.get('Opencart', 'Username'),
+            password=config.get('Opencart', 'Password'))
         shopee_client = ShopeeClient(
-            shop_id=0,
-            partner_id=0,
-            partner_key='')
+            shop_id=config.get('Shopee', 'ShopID'),
+            partner_id=config.get('Shopee', 'PartnerID'),
+            partner_key=config.get('Shopee', 'PartnerKey'))
         sync_client = SyncClient(
             opencart_client=opencart_client, lazada_client=lazada_client,
             shopee_client=shopee_client)
@@ -761,7 +761,7 @@ def DoSyncProcedure(config):
 
 def Config(filename):
     """Reads and returns the ConfigParser instance."""
-    config = configparser.ConfigParser()
+    config = ConfigParser.RawConfigParser()
     config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)), filename))
 
     return config
