@@ -745,8 +745,8 @@ def DoSyncProcedure(config):
             username=config.get('Opencart', 'Username'),
             password=config.get('Opencart', 'Password'))
         shopee_client = ShopeeClient(
-            shop_id=config.get('Shopee', 'ShopID'),
-            partner_id=config.get('Shopee', 'PartnerID'),
+            shop_id=config.getint('Shopee', 'ShopID'),
+            partner_id=config.getint('Shopee', 'PartnerID'),
             partner_key=config.get('Shopee', 'PartnerKey'))
         sync_client = SyncClient(
             opencart_client=opencart_client, lazada_client=lazada_client,
