@@ -728,6 +728,19 @@ def DoCleanupProcedure(config):
         deleted_models = ListDeletedSystemModels(sync_client, _SYSTEM_OPENCART)
         sync_client._DeleteInventoryItems(deleted_models)
 
+def DoLazadaResetAccessToken(config, auth_code):
+    """Kicks off the process to reset / renew the access token by auth code."""
+    oauth2_service = Oauth2Service()
+    with oauth2_service:
+        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
+
+        lazada_client = LazadaClient(
+            domain=config.get('Lazada', 'Domain'),
+            app_key=config.get('Lazada', 'AppKey'),
+            app_secret=config.get('Lazada', 'AppSecret'),
+            with_refresh=False)
+
+        CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code=auth_code)
 
 def DoSyncProcedure(config):
     """Kicks off the process to sync product quantities between systems."""
@@ -776,6 +789,8 @@ def main(argv):
         DoSyncProcedure(config)
     elif argv[1] == '--sync':
         DoSyncProcedure(config)
+    elif argv[1] == '--lzreauth':
+        DoLazadaResetAccessToken(config, argv[2])
     elif argv[1] == '--cleanup':
         DoCleanupProcedure(config)
     elif argv[1] == '--chkconfig':
