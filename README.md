@@ -5,19 +5,32 @@
 
 Configure `config.ini` and fill up the sections for Lazada, Opencart and Shopee.
 
-## Exec
+## Environment
 
-1. Install virtualenv, pip and python2
-2. Setup in terminal:
+1. Install pyenv and friends
+
+```shell
+$ # Install pyenv and friends
+$ brew install pyenv pyenv-virtualenv
+$ # Create venv for 2.7.15 under name "oclz"
+$ pyenv virtualenv 2.7.15 oclz
+```
+
+2. Add this thing on your ~/.bashrc (or ~/.zshrc)
 
 ```
-$ ENVS=/home/<USER>/envs
-$ virtualenv -p /usr/bin/python2 ENVS/oclz
-$ source $ENVS/oclz/bin/activate
-$ pip install requests
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
 ```
 
-3. Try executing:
+3. Activate and install "requests"
+
+```shell
+$ pyenv activate oclz
+(oclz) -> $ pip install requests
+```
+
+4. Try executing:
 
 ```
 $ python sync.py --chkconfig
