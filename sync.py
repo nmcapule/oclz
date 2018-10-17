@@ -752,7 +752,6 @@ def DoSyncProcedure(config):
             app_key=config.get('Lazada', 'AppKey'),
             app_secret=config.get('Lazada', 'AppSecret'),
             access_token=lazada_oauth2_dict['access_token'])
-        # CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code='')
         opencart_client = OpencartClient(
             domain=config.get('Opencart', 'Domain'),
             username=config.get('Opencart', 'Username'),
@@ -795,6 +794,10 @@ def main(argv):
         DoCleanupProcedure(config)
     elif argv[1] == '--chkconfig':
         logging.info(config.sections())
+        oauth2_service = Oauth2Service()
+        with oauth2_service:
+            lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
+            logging.info(lazada_oauth2_dict)
 
 
 if __name__ == '__main__':
