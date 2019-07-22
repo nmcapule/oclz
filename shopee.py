@@ -91,8 +91,13 @@ class ShopeeClient:
         session = requests.Session()
         r = session.post(domain, headers=headers, data=payload)
 
-        # TODO(nmcapule): Handle value error - invalid JSON error.
-        parsed = json.loads(r.content)
+        try:
+            # TODO(nmcapule): Handle value error - invalid JSON error.
+            parsed = json.loads(r.content)
+        except Exception as e: 
+            print(e)
+            print str(r.content)
+            print str(payload)
 
         if r.status_code >= 300 or ('error' in parsed and len(parsed['error']) > 0):
             error_code = r.status_code
