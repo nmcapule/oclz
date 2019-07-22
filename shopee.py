@@ -150,9 +150,19 @@ class ShopeeClient:
         items = []
         for meta_item in meta_items:
             item_id = meta_item["item_id"]
-            result = self._Request(
-                "/api/v1/item/get", self._ConstructPayload({"item_id": item_id})
-            )
+
+            for _ in range(10):
+                try:
+                    result = self._Request(
+                        "/api/v1/item/get", self._ConstructPayload({"item_id": item_id})
+                    )
+                except ValueError as e:
+                    logging.info(e)
+                    continue
+
+                # On success, break retry loop.
+                logging.info("Success parsing %d" % item_id)
+                break
 
             if not result.result:
                 logging.info(
