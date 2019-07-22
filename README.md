@@ -35,3 +35,7 @@ $ pyenv activate oclz
 ```
 $ python sync.py --chkconfig
 ```
+
+## Formatter
+
+Use `black` formatter please.

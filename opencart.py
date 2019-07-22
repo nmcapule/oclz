@@ -7,10 +7,10 @@ import requests
 
 from errors import Error, NotFoundError, MultipleResultsError, CommunicationError
 
-_LIST_PRODUCTS_ENDPOINT = 'module/store_sync/listlocalproducts'
+_LIST_PRODUCTS_ENDPOINT = "module/store_sync/listlocalproducts"
 
 # TODO(nmcapule): Endpoint
-_UPDATE_PRODUCT_QUANTITY_ENDPOINT = 'module/store_sync/setlocalquantity'
+_UPDATE_PRODUCT_QUANTITY_ENDPOINT = "module/store_sync/setlocalquantity"
 
 
 class OpencartProduct(object):
@@ -43,8 +43,14 @@ class OpencartRequestResult:
     """Describes a request result from querying Opencart."""
 
     def __init__(
-            self, attachment=None, endpoint='', payload='', result=None, error_code=0,
-            error_description=''):
+        self,
+        attachment=None,
+        endpoint="",
+        payload="",
+        result=None,
+        error_code=0,
+        error_description="",
+    ):
         self.attachment = attachment
         self.endpoint = endpoint
         self.payload = payload
@@ -65,7 +71,7 @@ class OpencartClient:
 
         self.Refresh()
 
-    def _Request(self, endpoint, payload='', content_parser=None):
+    def _Request(self, endpoint, payload="", content_parser=None):
         """Creates and sends a request to the given Opencart endpoint.
 
         Args:
@@ -79,21 +85,24 @@ class OpencartClient:
           CommunicationError: Cannot communicate properly with Opencart.
         """
         if payload:
-            payload = '&' + payload
+            payload = "&" + payload
         params = {
-            'username': self._username,
-            'password': self._password,
-            'redirect': '{0}{1}{2}'.format(self._domain, endpoint, payload)
+            "username": self._username,
+            "password": self._password,
+            "redirect": "{0}{1}{2}".format(self._domain, endpoint, payload),
         }
         session = requests.Session()
         r = session.post(self._domain + "common/login", data=params)
 
         error_code = 0
-        error_description = 'SUCCESS'
+        error_description = "SUCCESS"
 
         result = OpencartRequestResult(
-            endpoint=endpoint, payload=payload, error_code=error_code,
-            error_description=error_description)
+            endpoint=endpoint,
+            payload=payload,
+            error_code=error_code,
+            error_description=error_description,
+        )
         if not content_parser:
             result.result = r.content
         else:
@@ -113,16 +122,14 @@ class OpencartClient:
             json_stub = json.loads(str)
             for json_product in json_stub:
                 item = OpencartProduct(
-                    model=json_product['model'],
-                    quantity=int(json_product['quantity']))
+                    model=json_product["model"], quantity=int(json_product["quantity"])
+                )
                 items.append(item)
 
-        result = self._Request(
-            _LIST_PRODUCTS_ENDPOINT, content_parser=content_parser)
+        result = self._Request(_LIST_PRODUCTS_ENDPOINT, content_parser=content_parser)
 
         if not items:
-            raise CommunicationError(
-                'Somehow, zero items retrieved from Opencart!')
+            raise CommunicationError("Somehow, zero items retrieved from Opencart!")
 
         self._products = items
 
@@ -140,9 +147,9 @@ class OpencartClient:
         """
         results = [p for p in self._products if p.model == model]
         if not results:
-            raise NotFoundError('Not found in Opencart: %s' % model)
+            raise NotFoundError("Not found in Opencart: %s" % model)
         if len(results) > 1:
-            logging.error('Multiple results in Opencart: %s' % model)
+            logging.error("Multiple results in Opencart: %s" % model)
             # raise MultipleResultsError('Multiple results in Opencart: %s' % model)
 
         return copy.deepcopy(results[0])
@@ -178,8 +185,9 @@ class OpencartClient:
         Raises:
           CommunicationError: Cannot communicate properly with Opencart
         """
+
         def _CreateUpdateProductPayload(model, quantity):
-            return 'model=%s&quantity=%s' % (model, quantity,)
+            return "model=%s&quantity=%s" % (model, quantity)
 
         results = []
         for p in products:
@@ -196,14 +204,15 @@ class OpencartClient:
         return results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    domain = 'https://circuit.rocks/admin/index.php?route='
-    username = ''
-    password = ''
+    domain = "https://circuit.rocks/admin/index.php?route="
+    username = ""
+    password = ""
 
     client = OpencartClient(domain, username, password)
 
-    p = client.GetProduct('WHC0011RF')
-    logging.info('%s %d %d' % (p.model, p.quantity, p.stocks,))
+    p = client.GetProduct("WHC0011RF")
+    logging.info("%s %d %d" % (p.model, p.quantity, p.stocks))
+

@@ -12,7 +12,13 @@ import xml.etree.ElementTree
 
 from hashlib import sha256
 
-from errors import Error, NotFoundError, MultipleResultsError, CommunicationError, UnhandledTagError
+from errors import (
+    Error,
+    NotFoundError,
+    MultipleResultsError,
+    CommunicationError,
+    UnhandledTagError,
+)
 
 
 class LazadaProduct(object):
@@ -46,8 +52,14 @@ class LazadaRequestResult:
     """Describes a request result from querying Lazada."""
 
     def __init__(
-            self, attachment=None, endpoint='', payload='', result=None, error_code=0,
-            error_description=''):
+        self,
+        attachment=None,
+        endpoint="",
+        payload="",
+        result=None,
+        error_code=0,
+        error_description="",
+    ):
         self.attachment = attachment
         self.endpoint = endpoint
         self.payload = payload
@@ -58,11 +70,16 @@ class LazadaRequestResult:
 
 
 def sign(secret, api, parameters):
-    concatenated = "%s%s" % (api, str().join(
-        '%s%s' % (key, parameters[key]) for key in sorted(parameters)))
+    concatenated = "%s%s" % (
+        api,
+        str().join("%s%s" % (key, parameters[key]) for key in sorted(parameters)),
+    )
 
-    h = hmac.new(secret.encode(encoding="utf-8"),
-                 concatenated.encode(encoding="utf-8"), digestmod=hashlib.sha256)
+    h = hmac.new(
+        secret.encode(encoding="utf-8"),
+        concatenated.encode(encoding="utf-8"),
+        digestmod=hashlib.sha256,
+    )
 
     return h.hexdigest().upper()
 
@@ -70,7 +87,7 @@ def sign(secret, api, parameters):
 class LazadaClient:
     """Implements a Lazada Client."""
 
-    def __init__(self, domain, app_key, app_secret, access_token='', with_refresh=True):
+    def __init__(self, domain, app_key, app_secret, access_token="", with_refresh=True):
         self._domain = domain
         self._app_key = app_key
         self._app_secret = app_secret
@@ -88,7 +105,7 @@ class LazadaClient:
     def access_token(self, value):
         self._access_token = value
 
-    def _Request(self, endpoint, api_parameters={}, payload='', domain=None, raw=False):
+    def _Request(self, endpoint, api_parameters={}, payload="", domain=None, raw=False):
         """Creates and sends a request to the given Lazada action.
 
         Raises:
@@ -97,17 +114,17 @@ class LazadaClient:
         """
 
         parameters = {
-            'app_key': self._app_key,
-            'sign_method': 'sha256',
-            'timestamp': str(int(round(time.time()))) + '000',
-            'partner_id': 'lazop-sdk-python-20180424'
+            "app_key": self._app_key,
+            "sign_method": "sha256",
+            "timestamp": str(int(round(time.time()))) + "000",
+            "partner_id": "lazop-sdk-python-20180424",
         }
         if self._access_token and not raw:
-            parameters['access_token'] = self._access_token
+            parameters["access_token"] = self._access_token
         if payload:
-            parameters['payload'] = payload
+            parameters["payload"] = payload
         parameters.update(api_parameters)
-        parameters['sign'] = sign(self._app_secret, endpoint, parameters)
+        parameters["sign"] = sign(self._app_secret, endpoint, parameters)
 
         if domain is None:
             domain = self._domain
@@ -121,22 +138,27 @@ class LazadaClient:
             r = requests.get(url, parameters)
 
         res = r.json()
-        if 'code' in res and res['code'] != '0':
-            error_code = res['code']
-            error_description = res['message']
+        if "code" in res and res["code"] != "0":
+            error_code = res["code"]
+            error_description = res["message"]
 
             result = LazadaRequestResult(
-                endpoint=endpoint, payload=payload, error_code=error_code,
-                error_description=error_description)
+                endpoint=endpoint,
+                payload=payload,
+                error_code=error_code,
+                error_description=error_description,
+            )
 
             return result
         else:
             if raw:
                 result = LazadaRequestResult(
-                    endpoint=endpoint, payload=payload, result=res)
+                    endpoint=endpoint, payload=payload, result=res
+                )
             else:
                 result = LazadaRequestResult(
-                    endpoint=endpoint, payload=payload, result=res.get('data', ''))
+                    endpoint=endpoint, payload=payload, result=res.get("data", "")
+                )
 
             return result
 
@@ -146,46 +168,43 @@ class LazadaClient:
         Raises:
           CommunicationError: Cannot communicate properly with Lazada.
         """
-        outer_scope = {'total': 0}
+        outer_scope = {"total": 0}
         offset = 0
         limit = 100
         items = []
 
         def data_parser(data):
-            outer_scope['total'] = data['total_products']
+            outer_scope["total"] = data["total_products"]
 
-            for product in data['products']:
-                sku = product['skus'][0]
-                model = sku['SellerSku']
-                quantity = int(sku['quantity'])
-                reserved = quantity - int(sku['Available'] or quantity)
+            for product in data["products"]:
+                sku = product["skus"][0]
+                model = sku["SellerSku"]
+                quantity = int(sku["quantity"])
+                reserved = quantity - int(sku["Available"] or quantity)
 
-                item = LazadaProduct(
-                    model=model, quantity=quantity, reserved=reserved)
+                item = LazadaProduct(model=model, quantity=quantity, reserved=reserved)
 
                 items.append(item)
 
         while True:
-            parameters = {
-                'filter': 'all',
-                'offset': offset,
-                'limit': limit
-            }
-            result = self._Request('/products/get', parameters)
+            parameters = {"filter": "all", "offset": offset, "limit": limit}
+            result = self._Request("/products/get", parameters)
             if result.error_code:
                 raise CommunicationError(
-                    'Error communicating: %s' % result.error_description)
+                    "Error communicating: %s" % result.error_description
+                )
 
             data_parser(result.result)
 
             logging.info(
-                'Loaded items: %d out of %d' % (len(items), outer_scope['total'],))
+                "Loaded items: %d out of %d" % (len(items), outer_scope["total"])
+            )
 
             offset += limit
-            if offset >= outer_scope['total']:
+            if offset >= outer_scope["total"]:
                 break
 
-        logging.info('Total items: %d' % len(items))
+        logging.info("Total items: %d" % len(items))
 
         self._products = items
 
@@ -208,41 +227,42 @@ class LazadaClient:
         items = []
 
         def data_parser(data):
-            for product in data['products']:
-                sku = product['skus'][0]
-                attrs = product['Attributes']
+            for product in data["products"]:
+                sku = product["skus"][0]
+                attrs = product["Attributes"]
 
                 images = []
-                for img in sku['Images']:
+                for img in sku["Images"]:
                     if img:
-                        imgurl = string.replace(img, 'catalog.jpg', 'zoom.jpg')
+                        imgurl = string.replace(img, "catalog.jpg", "zoom.jpg")
                         images.append(imgurl)
 
                 p = {
-                    'name': attrs['name'],
-                    'description': attrs['short_description'],
-                    'model': sku['SellerSku'],
-                    'stocks': int(sku['Available']) or int(sku['quantity']),
-                    'price': float(sku['price']),
-                    'images': images,
-                    'weight': float(sku['package_weight']) or 0.9,
+                    "name": attrs["name"],
+                    "description": attrs["short_description"],
+                    "model": sku["SellerSku"],
+                    "stocks": int(sku["Available"]) or int(sku["quantity"]),
+                    "price": float(sku["price"]),
+                    "images": images,
+                    "weight": float(sku["package_weight"]) or 0.9,
                     # 'category': 'PENDING',
                     # 'logistics': 'PENDING', # Not in lazada
                 }
                 items.append(p)
 
-        result = self._Request('/products/get', {'search': model})
+        result = self._Request("/products/get", {"search": model})
         if result.error_code:
             raise CommunicationError(
-                'Error communicating: %s' % result.error_description)
+                "Error communicating: %s" % result.error_description
+            )
 
         data_parser(result.result)
 
-        items = [x for x in items if x['model'] == model]
+        items = [x for x in items if x["model"] == model]
         if len(items) == 0:
-            raise NotFoundError('No results for %s' % model)
+            raise NotFoundError("No results for %s" % model)
         elif len(items) > 1:
-            raise MultipleResultsError('Multiple results for %s' % model)
+            raise MultipleResultsError("Multiple results for %s" % model)
 
         return items[0]
 
@@ -261,10 +281,9 @@ class LazadaClient:
         """
         results = [p for p in self._products if p.model == model]
         if not results:
-            raise NotFoundError('Not found in Lazada: %s' % model)
+            raise NotFoundError("Not found in Lazada: %s" % model)
         if len(results) > 1:
-            raise MultipleResultsError(
-                'Multiple results in Lazada: %s' % model)
+            raise MultipleResultsError("Multiple results in Lazada: %s" % model)
 
         return copy.deepcopy(results[0])
 
@@ -299,14 +318,15 @@ class LazadaClient:
         Raises:
           CommunicationError: Cannot communicate properly with Lazada.
         """
+
         def _CreateUpdateProductPayload(model, quantity):
-            request = xml.etree.ElementTree.Element('Request')
-            product = xml.etree.ElementTree.SubElement(request, 'Product')
-            skus = xml.etree.ElementTree.SubElement(product, 'Skus')
-            sku = xml.etree.ElementTree.SubElement(skus, 'Sku')
-            sku_seller_sku = xml.etree.ElementTree.SubElement(sku, 'SellerSku')
+            request = xml.etree.ElementTree.Element("Request")
+            product = xml.etree.ElementTree.SubElement(request, "Product")
+            skus = xml.etree.ElementTree.SubElement(product, "Skus")
+            sku = xml.etree.ElementTree.SubElement(skus, "Sku")
+            sku_seller_sku = xml.etree.ElementTree.SubElement(sku, "SellerSku")
             sku_seller_sku.text = model
-            sku_quantity = xml.etree.ElementTree.SubElement(sku, 'Quantity')
+            sku_quantity = xml.etree.ElementTree.SubElement(sku, "Quantity")
             sku_quantity.text = str(quantity)
 
             preamble = '<?xml version="1.0" encoding="utf-8" ?>'
@@ -319,8 +339,7 @@ class LazadaClient:
 
             # Create XML request
             payload = _CreateUpdateProductPayload(p.model, p.quantity)
-            result = self._Request(
-                '/product/price_quantity/update', payload=payload)
+            result = self._Request("/product/price_quantity/update", payload=payload)
             result.attachment = p
 
             results.append(result)
@@ -328,19 +347,19 @@ class LazadaClient:
         return results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    domain = 'https://api.lazada.com.ph/rest'
+    domain = "https://api.lazada.com.ph/rest"
     app_key = 102505
-    app_secret = ''
-    access_token = ''
+    app_secret = ""
+    access_token = ""
 
-    client = LazadaClient(domain, app_key, app_secret,
-                          access_token=access_token)
+    client = LazadaClient(domain, app_key, app_secret, access_token=access_token)
 
-    p = client.GetProduct('WHC0011RF')
-    logging.info('%s %d %d %d' % (p.model, p.quantity, p.reserved, p.stocks,))
+    p = client.GetProduct("WHC0011RF")
+    logging.info("%s %d %d %d" % (p.model, p.quantity, p.reserved, p.stocks))
 
-    r = client.UpdateProductStocks('WHC0011RF', 4)
-    logging.info('%s %s' % (r.error_code, r.error_description))
+    r = client.UpdateProductStocks("WHC0011RF", 4)
+    logging.info("%s %s" % (r.error_code, r.error_description))
+
