@@ -6,13 +6,14 @@ import sys
 
 from sync import sync
 
-DEFAULT_CONFIG_PATH = "configs/config.ini"
+DEFAULT_CONFIG_PATH = "config.ini"
 
 
 def ReadConfig(filename):
     """Reads and returns the ConfigParser instance."""
     config = configparser.RawConfigParser()
-    config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)), filename))
+    config.read(
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), filename))
     return config
 
 
@@ -54,8 +55,7 @@ if __name__ == "__main__":
 
     # Setup argument parser.
     parser = argparse.ArgumentParser(
-        description="Opencart-Lazada-Shopee syncing script."
-    )
+        description="Opencart-Lazada-Shopee syncing script.")
     parser.add_argument(
         "mode",
         choices=COMMAND_LOOKUP.keys(),
