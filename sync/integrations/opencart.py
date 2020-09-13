@@ -5,7 +5,12 @@ import json
 import logging
 import requests
 
-from errors import Error, NotFoundError, MultipleResultsError, CommunicationError
+from sync.common.errors import (
+    Error,
+    NotFoundError,
+    MultipleResultsError,
+    CommunicationError,
+)
 
 _LIST_PRODUCTS_ENDPOINT = "module/store_sync/listlocalproducts"
 

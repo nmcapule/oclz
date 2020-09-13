@@ -11,7 +11,7 @@ from datetime import datetime
 from hashlib import sha256
 from hmac import HMAC
 
-from errors import (
+from sync.common.errors import (
     Error,
     NotFoundError,
     MultipleResultsError,

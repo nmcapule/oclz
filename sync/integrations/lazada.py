@@ -12,7 +12,7 @@ import xml.etree.ElementTree
 
 from hashlib import sha256
 
-from errors import (
+from sync.common.errors import (
     Error,
     NotFoundError,
     MultipleResultsError,

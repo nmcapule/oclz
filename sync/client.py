@@ -1,115 +1,6 @@
-"""Package for syncing implementation between shops."""
-
-import ConfigParser
-import logging
-import os
 import sqlite3
-import sys
 
-import lazada
-import opencart
-import shopee
-
-from errors import (
-    Error,
-    NotFoundError,
-    MultipleResultsError,
-    CommunicationError,
-    UnhandledSystemError,
-)
-from lazada import LazadaClient
-from opencart import OpencartClient
-from shopee import ShopeeClient
-
-
-_SCRIPT_VERSION = "0.6"
-
-_SYSTEM_OPENCART = "OPENCART"
-_SYSTEM_LAZADA = "LAZADA"
-_SYSTEM_SHOPEE = "SHOPEE"
-_EXTERNAL_SYSTEMS = [_SYSTEM_LAZADA, _SYSTEM_OPENCART, _SYSTEM_SHOPEE]
-
-_ERROR_SUCCESS = 0
-
-_DEFAULT_DB_PATH = "./skeo_sync.db"
-_DEFAULT_CONF_PATH = "config.ini"
-
-_CREATE_TABLE_OAUTH2 = """
-CREATE TABLE IF NOT EXISTS oauth2 (
-    system TEXT,
-    access_token TEXT,
-    refresh_token TEXT,
-    created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_on DATETIME
-)
-"""
-_DROP_TABLE_OAUTH2 = """
-DROP TABLE oauth2
-"""
-
-_CREATE_TABLE_SYNC_BATCH = """
-CREATE TABLE IF NOT EXISTS sync_batch (
-  sync_batch_id INTEGER PRIMARY KEY,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  script_version TEXT
-)
-"""
-_DROP_TABLE_SYNC_BATCH = """
-DROP TABLE sync_batch
-"""
-
-_CREATE_TABLE_SYNC_LOGS = """
-CREATE TABLE IF NOT EXISTS sync_logs (
-  sync_batch_id INTEGER,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  model TEXT,
-  system TEXT,
-  previous_stocks INTEGER,
-  computed_stocks INTEGER,
-  upload_error_code TEXT,
-  upload_error_description TEXT
-)
-"""
-_DROP_TABLE_SYNC_LOGS = """
-DROP TABLE sync_logs
-"""
-
-_CREATE_TABLE_INVENTORY_SYSTEM_CACHE = """
-CREATE TABLE IF NOT EXISTS inventory_system_cache (
-  model TEXT,
-  system TEXT,
-  stocks INTEGER,
-  last_sync_batch_id INTEGER
-)
-"""
-_DROP_TABLE_INVENTORY_SYSTEM_CACHE = """
-DROP TABLE inventory_system_cache
-"""
-
-_CREATE_TABLE_INVENTORY_SYSTEM_CACHE_DELTA = """
-CREATE TABLE IF NOT EXISTS inventory_system_cache_delta (
-  model TEXT,
-  system TEXT,
-  cached_stocks INTEGER,
-  current_stocks INTEGER,
-  stocks_delta INTEGER,
-  last_sync_batch_id INTEGER
-)
-"""
-_DROP_TABLE_INVENTORY_SYSTEM_CACHE_DELTA = """
-DROP TABLE inventory_system_cache_delta
-"""
-
-_CREATE_TABLE_INVENTORY = """
-CREATE TABLE IF NOT EXISTS inventory (
-  model TEXT PRIMARY KEY,
-  stocks INTEGER,
-  last_sync_batch_id INTEGER
-)
-"""
-_DROP_TABLE_INVENTORY = """
-DROP TABLE inventory
-"""
+from sync import constants
 
 
 class InventoryItem:
@@ -131,101 +22,6 @@ class InventorySystemCacheItem(InventoryItem):
         self.last_sync_batch_id = last_sync_batch_id
 
 
-class Oauth2Service:
-    """Implements tracking of Oauth2 tokens."""
-
-    def __init__(self, dbpath=None):
-        self._db_client = self._Connect(dbpath or _DEFAULT_DB_PATH)
-
-        self._Setup()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, unused_exc_type, unused_exc_value, unused_traceback):
-        self.Close()
-
-    def _Setup(self):
-        """Creates all table in the database."""
-        cursor = self._db_client.cursor()
-        cursor.execute(_CREATE_TABLE_OAUTH2)
-        self._db_client.commit()
-
-    def _Drop(self):
-        """Drops all table in the database."""
-        cursor = self._db_client.cursor()
-        cursor.execute(_DROP_TABLE_OAUTH2)
-        self._db_client.commit()
-
-    def _Connect(self, dbpath):
-        """Creates a connection to sqlite3 database."""
-        return sqlite3.connect(dbpath)
-
-    def _Disconnect(self):
-        """Dsiconnects from sqlite3 datbase."""
-        self._db_client.close()
-        self._db_client = None
-
-    def Close(self):
-        """Safely closes connection to sqlite3 database."""
-        if self._db_client:
-            self._Disconnect()
-
-    def SaveOauth2Tokens(self, system, access_token, refresh_token, expires_on):
-        """Saves the oauth2 tokens of a system to the database."""
-        cursor = self._db_client.cursor()
-
-        cursor.execute(
-            """
-            UPDATE oauth2
-            SET access_token=?, refresh_token=?, expires_on=?, created_on=CURRENT_TIMESTAMP
-            WHERE system=?
-            """,
-            (access_token, refresh_token, expires_on, system),
-        )
-
-        if cursor.rowcount == 0:
-            cursor.execute(
-                """
-                INSERT INTO oauth2 (system, access_token, refresh_token, expires_on)
-                VALUES (?, ?, ?, ?)
-                """,
-                (system, access_token, refresh_token, expires_on),
-            )
-
-        self._db_client.commit()
-
-    def GetOauth2Tokens(self, system):
-        """Retrieves latest tokens from a system.
-
-        Returns:
-            dict, detail of Oauth2 tokens for a system.
-        """
-
-        cursor = self._db_client.cursor()
-
-        cursor.execute(
-            """
-            SELECT system, access_token, refresh_token, created_on, expires_on
-            FROM oauth2
-            WHERE system=?
-            """,
-            (system,),
-        )
-
-        result = cursor.fetchone()
-        if result is None:
-            raise NotFoundError("Oauth2 for system not found: %s" % system)
-
-        return {
-            "system": result[0],
-            "access_token": result[1],
-            "refresh_token": result[2],
-            "created_on": result[3],
-            "expires_on": result[4],
-        }
-
-
 class SyncClient:
     """Implements syncing."""
 
@@ -236,7 +32,7 @@ class SyncClient:
         self._lazada_client = lazada_client
         self._shopee_client = shopee_client
 
-        self._db_client = self._Connect(dbpath or _DEFAULT_DB_PATH)
+        self._db_client = self._Connect(dbpath or constants._DEFAULT_DB_PATH)
         self.sync_batch_id = -1
 
         self._Setup()
@@ -259,22 +55,22 @@ class SyncClient:
     def _Setup(self):
         """Creates all table in the database."""
         cursor = self._db_client.cursor()
-        cursor.execute(_CREATE_TABLE_SYNC_BATCH)
-        cursor.execute(_CREATE_TABLE_SYNC_LOGS)
-        cursor.execute(_CREATE_TABLE_INVENTORY_SYSTEM_CACHE)
-        cursor.execute(_CREATE_TABLE_INVENTORY_SYSTEM_CACHE_DELTA)
-        cursor.execute(_CREATE_TABLE_INVENTORY)
+        cursor.execute(constants._CREATE_TABLE_SYNC_BATCH)
+        cursor.execute(constants._CREATE_TABLE_SYNC_LOGS)
+        cursor.execute(constants._CREATE_TABLE_INVENTORY_SYSTEM_CACHE)
+        cursor.execute(constants._CREATE_TABLE_INVENTORY_SYSTEM_CACHE_DELTA)
+        cursor.execute(constants._CREATE_TABLE_INVENTORY)
 
         self._db_client.commit()
 
     def _Drop(self):
         """Drops all table in the database."""
         cursor = self._db_client.cursor()
-        cursor.execute(_DROP_TABLE_SYNC_BATCH)
-        cursor.execute(_DROP_TABLE_SYNC_LOGS)
-        cursor.execute(_DROP_TABLE_INVENTORY_SYSTEM_CACHE)
-        cursor.execute(_DROP_TABLE_INVENTORY_SYSTEM_CACHE_DELTA)
-        cursor.execute(_DROP_TABLE_INVENTORY)
+        cursor.execute(constants._DROP_TABLE_SYNC_BATCH)
+        cursor.execute(constants._DROP_TABLE_SYNC_LOGS)
+        cursor.execute(constants._DROP_TABLE_INVENTORY_SYSTEM_CACHE)
+        cursor.execute(constants._DROP_TABLE_INVENTORY_SYSTEM_CACHE_DELTA)
+        cursor.execute(constants._DROP_TABLE_INVENTORY)
 
         self._db_client.commit()
 
@@ -302,7 +98,8 @@ class SyncClient:
         cursor = self._db_client.cursor()
 
         cursor.execute(
-            """INSERT INTO sync_batch (script_version) VALUES (?)""", (_SCRIPT_VERSION,)
+            """INSERT INTO sync_batch (script_version) VALUES (?)""",
+            (constants._SCRIPT_VERSION,),
         )
 
         self._db_client.commit()
@@ -320,11 +117,11 @@ class SyncClient:
         Raises:
           UnhandledSystemError, The given system code not yet supported.
         """
-        if system == _SYSTEM_LAZADA:
+        if system == constants._SYSTEM_LAZADA:
             return self._lazada_client
-        elif system == _SYSTEM_OPENCART:
+        elif system == constants._SYSTEM_OPENCART:
             return self._opencart_client
-        elif system == _SYSTEM_SHOPEE:
+        elif system == constants._SYSTEM_SHOPEE:
             return self._shopee_client
         else:
             raise UnhandledSystemError("System is not handled: %s" % system)
@@ -517,7 +314,7 @@ class SyncClient:
         """Returns a list of all unique product models from the external sources."""
         models = set([])
 
-        for system in _EXTERNAL_SYSTEMS:
+        for system in constants._EXTERNAL_SYSTEMS:
             if filter_system and system != filter_system:
                 continue
 
@@ -533,7 +330,7 @@ class SyncClient:
     def ProductAvailability(self):
         """Returns an object declaring product availability on each of the systems."""
         lookup = {}
-        for system in _EXTERNAL_SYSTEMS:
+        for system in constants._EXTERNAL_SYSTEMS:
             lookup[system] = set(self._CollectExternalProductModels(system))
         return lookup
 
@@ -632,7 +429,7 @@ class SyncClient:
         self._db_client.commit()
 
         # If successful in update, update in system cache.
-        if result.error_code == _ERROR_SUCCESS:
+        if result.error_code == constants._ERROR_SUCCESS:
             self._UpsertInventorySystemCacheItem(system, item)
 
     def Sync(self):
@@ -641,7 +438,7 @@ class SyncClient:
 
         for model in self._CollectExternalProductModels():
             stocks_delta = 0
-            for system in _EXTERNAL_SYSTEMS:
+            for system in constants._EXTERNAL_SYSTEMS:
                 system_stocks_delta, current_stocks = self._CalculateSystemStocksDelta(
                     system, model
                 )
@@ -662,7 +459,7 @@ class SyncClient:
             except NotFoundError as e:
                 # If item is not found, try getting frmo Opencart.
                 try:
-                    opencart_client = self._System(_SYSTEM_OPENCART)
+                    opencart_client = self._System(constants._SYSTEM_OPENCART)
                     p = opencart_client.GetProduct(model)
 
                     item = InventoryItem(
@@ -683,7 +480,7 @@ class SyncClient:
             self._UpsertInventoryItem(item)
 
             # Update external systems and inventory system cache.
-            for system in _EXTERNAL_SYSTEMS:
+            for system in constants._EXTERNAL_SYSTEMS:
                 try:
                     self._UpdateExternalSystemItem(system, item)
                 except CommunicationError as e:
@@ -693,178 +490,3 @@ class SyncClient:
                 except MultipleResultsError as e:
                     logging.warn("Skipping external update due to multiple: " + str(e))
 
-
-def UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client):
-    """Creates mising products from Shopee using data from Lazada."""
-
-    lookup = sync_client.ProductAvailability()
-    lazada_items = lookup[_SYSTEM_LAZADA]
-    shopee_items = lookup[_SYSTEM_SHOPEE]
-
-    items_to_upload = lazada_items - shopee_items
-    for model in items_to_upload:
-        try:
-            lazada_product = lazada_client.GetProductDirect(model)
-            shopee_item_id = shopee_client.CreateProduct(lazada_product)
-        except Exception as e:
-            logging.error("Oh no error syncing %s: %s" % (model, str(e)))
-
-
-def CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code):
-    """Creates Oauth2 tokens of the client for Lazada Open API platform."""
-    result = lazada_client._Request(
-        "/auth/token/create",
-        {"code": code},
-        domain="https://auth.lazada.com/rest",
-        raw=True,
-    )
-    if result.error_code != _ERROR_SUCCESS:
-        raise CommunicationError("Error creating oauth2: %s" % result.error_description)
-
-    update_oauth2_dict = result.result
-
-    oauth2_service.SaveOauth2Tokens(
-        _SYSTEM_LAZADA,
-        update_oauth2_dict["access_token"],
-        update_oauth2_dict["refresh_token"],
-        update_oauth2_dict["expires_in"],
-    )
-
-
-def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client):
-    """Updates Oauth2 tokens of the client for Lazada Open API platform."""
-    lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
-
-    result = lazada_client._Request(
-        "/auth/token/refresh",
-        {"refresh_token": lazada_oauth2_dict["refresh_token"]},
-        domain="https://auth.lazada.com/rest",
-        raw=True,
-    )
-    if result.error_code != _ERROR_SUCCESS:
-        raise CommunicationError("Error updating oauth2: %s" % result.error_description)
-
-    update_oauth2_dict = result.result
-
-    oauth2_service.SaveOauth2Tokens(
-        _SYSTEM_LAZADA,
-        update_oauth2_dict["access_token"],
-        update_oauth2_dict["refresh_token"],
-        update_oauth2_dict["expires_in"],
-    )
-
-
-def ListDeletedSystemModels(sync_client, system):
-    """Returns item models that no longer exist in a system but does so in the DB.
-
-    Raises:
-      CommunicationError, Unexpected number of external product models.
-    """
-    if sync_client._System(system) is None:
-        raise CommunicationError("%s is not initialized!" % system)
-
-    cached_products = sync_client._GetInventoryItems()
-    cached_models = set([p.model for p in cached_products])
-
-    online_models = set(sync_client._CollectExternalProductModels(system))
-    if len(online_models) == 0:
-        raise CommunicationError("Unexpected number of external product models!")
-
-    return cached_models - online_models
-
-
-def DoCleanupProcedure(config):
-    """Kicks off the process to remove records that no longer exists in OC."""
-    opencart_client = OpencartClient(
-        domain=config.get("Opencart", "Domain"),
-        username=config.get("Opencart", "Username"),
-        password=config.get("Opencart", "Password"),
-    )
-    sync_client = SyncClient(opencart_client=opencart_client)
-
-    with sync_client:
-        deleted_models = ListDeletedSystemModels(sync_client, _SYSTEM_OPENCART)
-        sync_client._DeleteInventoryItems(deleted_models)
-
-
-def DoLazadaResetAccessToken(config, auth_code):
-    """Kicks off the process to reset / renew the access token by auth code."""
-    oauth2_service = Oauth2Service()
-    with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
-
-        lazada_client = LazadaClient(
-            domain=config.get("Lazada", "Domain"),
-            app_key=config.get("Lazada", "AppKey"),
-            app_secret=config.get("Lazada", "AppSecret"),
-            with_refresh=False,
-        )
-
-        CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code=auth_code)
-
-
-def DoSyncProcedure(config):
-    """Kicks off the process to sync product quantities between systems."""
-    oauth2_service = Oauth2Service()
-    with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
-        lazada_client = LazadaClient(
-            domain=config.get("Lazada", "Domain"),
-            app_key=config.get("Lazada", "AppKey"),
-            app_secret=config.get("Lazada", "AppSecret"),
-            access_token=lazada_oauth2_dict["access_token"],
-        )
-        opencart_client = OpencartClient(
-            domain=config.get("Opencart", "Domain"),
-            username=config.get("Opencart", "Username"),
-            password=config.get("Opencart", "Password"),
-        )
-        shopee_client = ShopeeClient(
-            shop_id=config.getint("Shopee", "ShopID"),
-            partner_id=config.getint("Shopee", "PartnerID"),
-            partner_key=config.get("Shopee", "PartnerKey"),
-        )
-        sync_client = SyncClient(
-            opencart_client=opencart_client,
-            lazada_client=lazada_client,
-            shopee_client=shopee_client,
-        )
-
-        with sync_client:
-            sync_client.Sync()
-            UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client)
-
-        UpdateLazadaOauth2Tokens(oauth2_service, lazada_client)
-
-
-def Config(filename):
-    """Reads and returns the ConfigParser instance."""
-    config = ConfigParser.RawConfigParser()
-    config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)), filename))
-
-    return config
-
-
-def main(argv):
-    logging.basicConfig(level=logging.DEBUG)
-    config = Config(_DEFAULT_CONF_PATH)
-
-    if len(argv) == 1:
-        DoCleanupProcedure(config)
-        DoSyncProcedure(config)
-    elif argv[1] == "--sync":
-        DoSyncProcedure(config)
-    elif argv[1] == "--lzreauth":
-        DoLazadaResetAccessToken(config, argv[2])
-    elif argv[1] == "--cleanup":
-        DoCleanupProcedure(config)
-    elif argv[1] == "--chkconfig":
-        logging.info(config.sections())
-        oauth2_service = Oauth2Service()
-        with oauth2_service:
-            lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(_SYSTEM_LAZADA)
-            logging.info(lazada_oauth2_dict)
-
-
-if __name__ == "__main__":
-    main(sys.argv)
