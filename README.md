@@ -1,11 +1,21 @@
 # SKEO Opencart-Lazada-Shopee Extension Accessory
 
-
 ## Setup
 
 Configure `config.ini` and fill up the sections for Lazada, Opencart and Shopee.
 
 ## Environment
+
+### Using docker setup
+
+1. Install [docker](docs.docker.com/get-docker)
+
+2. Run the app:
+
+   - **Make**: `make docker-run ARGS="--help"`
+   - **Bash**: `./scripts/docker_run --help`
+
+### Using local machine setup
 
 1. Install pyenv and friends
 
@@ -36,6 +46,6 @@ $ pyenv activate oclz
 $ python sync.py --chkconfig
 ```
 
-## Formatter
+### Formatter
 
 Use `black` formatter please.
