@@ -1,4 +1,7 @@
+import sqlite3
+
 from sync import constants
+
 
 class Oauth2Service:
     """Implements tracking of Oauth2 tokens."""

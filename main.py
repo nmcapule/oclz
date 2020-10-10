@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-from sync import sync
+from sync import constants, sync, oauth2
 
 DEFAULT_CONFIG_PATH = "config.ini"
 
@@ -36,9 +36,10 @@ def CommandCleanup(config, args):
 def CommandCheckConfig(config, args):
     """Check if auth config is still working."""
     logging.info(config.sections())
-    oauth2_service = sync.Oauth2Service()
+    oauth2_service = oauth2.Oauth2Service()
     with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(sync._SYSTEM_LAZADA)
+        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
+            constants._SYSTEM_LAZADA)
         logging.info(lazada_oauth2_dict)
 
 
