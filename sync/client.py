@@ -1,6 +1,7 @@
 import sqlite3
 
 from sync import constants
+from sync.common import errors
 
 
 class InventoryItem:
@@ -25,9 +26,11 @@ class InventorySystemCacheItem(InventoryItem):
 class SyncClient:
     """Implements syncing."""
 
-    def __init__(
-        self, dbpath=None, opencart_client=None, lazada_client=None, shopee_client=None
-    ):
+    def __init__(self,
+                 dbpath=None,
+                 opencart_client=None,
+                 lazada_client=None,
+                 shopee_client=None):
         self._opencart_client = opencart_client
         self._lazada_client = lazada_client
         self._shopee_client = shopee_client
@@ -142,9 +145,9 @@ class SyncClient:
 
         client.Refresh()
         for p in client.ListProducts():
-            item = InventoryItem(
-                model=p.model, stocks=p.stocks, last_sync_batch_id=self.sync_batch_id
-            )
+            item = InventoryItem(model=p.model,
+                                 stocks=p.stocks,
+                                 last_sync_batch_id=self.sync_batch_id)
             self._UpsertInventoryItem(item)
 
     def _GetInventoryItem(self, model):
@@ -172,11 +175,11 @@ class SyncClient:
 
         result = cursor.fetchone()
         if result is None:
-            raise NotFoundError("InventoryItem not found: %s" % model)
+            raise errors.NotFoundError("InventoryItem not found: %s" % model)
 
-        return InventoryItem(
-            model=result[0], stocks=result[1], last_sync_batch_id=result[2]
-        )
+        return InventoryItem(model=result[0],
+                             stocks=result[1],
+                             last_sync_batch_id=result[2])
 
     def _GetInventoryItems(self):
         """Retrieves all items from the inventory.
@@ -186,18 +189,15 @@ class SyncClient:
         """
         cursor = self._db_client.cursor()
 
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT model, stocks, last_sync_batch_id
             FROM inventory
-            """
-        )
+            """)
 
         result = []
         for p in cursor.fetchall():
             result.append(
-                InventoryItem(model=p[0], stocks=p[1], last_sync_batch_id=p[2])
-            )
+                InventoryItem(model=p[0], stocks=p[1], last_sync_batch_id=p[2]))
         return result
 
     def _DeleteInventoryItems(self, models):
@@ -270,9 +270,9 @@ class SyncClient:
 
         result = cursor.fetchone()
         if result is None:
-            raise NotFoundError(
-                "InventorySystemCacheItem not found: %s in %s" % (model, system)
-            )
+            raise errors.NotFoundError(
+                "InventorySystemCacheItem not found: %s in %s" %
+                (model, system))
 
         return InventorySystemCacheItem(
             model=result[0],
@@ -341,14 +341,16 @@ class SyncClient:
 
         try:
             current_stocks = client.GetProduct(model).stocks
-            cached_stocks = self._GetInventorySystemCacheItem(system, model).stocks
+            cached_stocks = self._GetInventorySystemCacheItem(system,
+                                                              model).stocks
         except Exception as e:
             logging.warn(e)
             return 0, 0
 
         return current_stocks - cached_stocks, current_stocks
 
-    def _RecordSystemStocksDelta(self, system, model, stocks_delta, current_stocks):
+    def _RecordSystemStocksDelta(self, system, model, stocks_delta,
+                                 current_stocks):
         """Adds a record of the diff between cached and current stocks of an item
         in an external system."""
         cached_stocks = current_stocks - stocks_delta
@@ -390,7 +392,8 @@ class SyncClient:
         client = self._System(system)
         system_item = client.GetProduct(item.model)
 
-        logging.info("Updating inventory system cache for %s %s" % (system, item.model))
+        logging.info("Updating inventory system cache for %s %s" %
+                     (system, item.model))
         fresh_item = InventorySystemCacheItem(
             system=system,
             model=system_item.model,
@@ -400,7 +403,8 @@ class SyncClient:
         self._UpsertInventorySystemCacheItem(system, fresh_item)
 
         if item.stocks == system_item.stocks:
-            logging.info("No need to update %s in %s: same" % (item.model, system))
+            logging.info("No need to update %s in %s: same" %
+                         (item.model, system))
             return
 
         result = client.UpdateProductStocks(item.model, item.stocks)
@@ -440,8 +444,7 @@ class SyncClient:
             stocks_delta = 0
             for system in constants._EXTERNAL_SYSTEMS:
                 system_stocks_delta, current_stocks = self._CalculateSystemStocksDelta(
-                    system, model
-                )
+                    system, model)
                 if system_stocks_delta != 0:
                     logging.info(
                         "Change in stocks of %s in %s: %d",
@@ -449,14 +452,14 @@ class SyncClient:
                         model,
                         system_stocks_delta,
                     )
-                    self._RecordSystemStocksDelta(
-                        system, model, system_stocks_delta, current_stocks
-                    )
+                    self._RecordSystemStocksDelta(system, model,
+                                                  system_stocks_delta,
+                                                  current_stocks)
                 stocks_delta += system_stocks_delta
 
             try:
                 item = self._GetInventoryItem(model)
-            except NotFoundError as e:
+            except errors.NotFoundError as e:
                 # If item is not found, try getting frmo Opencart.
                 try:
                     opencart_client = self._System(constants._SYSTEM_OPENCART)
@@ -467,7 +470,7 @@ class SyncClient:
                         stocks=p.stocks,
                         last_sync_batch_id=self.sync_batch_id,
                     )
-                except NotFoundError as e:
+                except errors.NotFoundError as e:
                     logging.error("This item is not in OPENCART?: %s" % model)
                     continue
 
@@ -483,10 +486,11 @@ class SyncClient:
             for system in constants._EXTERNAL_SYSTEMS:
                 try:
                     self._UpdateExternalSystemItem(system, item)
-                except CommunicationError as e:
-                    logging.error("Skipping external update due to error: " + str(e))
-                except NotFoundError as e:
+                except errors.CommunicationError as e:
+                    logging.error("Skipping external update due to error: " +
+                                  str(e))
+                except errors.NotFoundError as e:
                     logging.warn("Skipping external update: " + str(e))
-                except MultipleResultsError as e:
-                    logging.warn("Skipping external update due to multiple: " + str(e))
-
+                except errors.MultipleResultsError as e:
+                    logging.warn("Skipping external update due to multiple: " +
+                                 str(e))

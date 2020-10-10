@@ -1,6 +1,8 @@
 import sqlite3
+import logging
 
 from sync import constants
+from sync.common import errors
 
 
 class Oauth2Service:
@@ -87,7 +89,8 @@ class Oauth2Service:
 
         result = cursor.fetchone()
         if result is None:
-            raise NotFoundError("Oauth2 for system not found: %s" % system)
+            raise errors.NotFoundError("Oauth2 for system not found: %s" %
+                                       system)
 
         return {
             "system": result[0],

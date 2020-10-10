@@ -36,7 +36,7 @@ def CommandCleanup(config, args):
 def CommandCheckConfig(config, args):
     """Check if auth config is still working."""
     logging.info(config.sections())
-    oauth2_service = oauth2.Oauth2Service()
+    oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
     with oauth2_service:
         lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
             constants._SYSTEM_LAZADA)

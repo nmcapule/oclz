@@ -47,7 +47,8 @@ def CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code):
         raw=True,
     )
     if result.error_code != constants._ERROR_SUCCESS:
-        raise CommunicationError("Error creating oauth2: %s" % result.error_description)
+        raise CommunicationError("Error creating oauth2: %s" %
+                                 result.error_description)
 
     update_oauth2_dict = result.result
 
@@ -61,7 +62,8 @@ def CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code):
 
 def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client):
     """Updates Oauth2 tokens of the client for Lazada Open API platform."""
-    lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
+    lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
+        constants._SYSTEM_LAZADA)
 
     result = lazada_client._Request(
         "/auth/token/refresh",
@@ -70,7 +72,8 @@ def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client):
         raw=True,
     )
     if result.error_code != constants._ERROR_SUCCESS:
-        raise CommunicationError("Error updating oauth2: %s" % result.error_description)
+        raise CommunicationError("Error updating oauth2: %s" %
+                                 result.error_description)
 
     update_oauth2_dict = result.result
 
@@ -96,7 +99,8 @@ def ListDeletedSystemModels(sync_client, system):
 
     online_models = set(sync_client._CollectExternalProductModels(system))
     if len(online_models) == 0:
-        raise CommunicationError("Unexpected number of external product models!")
+        raise CommunicationError(
+            "Unexpected number of external product models!")
 
     return cached_models - online_models
 
@@ -111,9 +115,8 @@ def DoCleanupProcedure(config):
     sync_client = client.SyncClient(opencart_client=opencart_client)
 
     with sync_client:
-        deleted_models = ListDeletedSystemModels(
-            sync_client, constants._SYSTEM_OPENCART
-        )
+        deleted_models = ListDeletedSystemModels(sync_client,
+                                                 constants._SYSTEM_OPENCART)
         sync_client._DeleteInventoryItems(deleted_models)
 
 
@@ -121,7 +124,8 @@ def DoLazadaResetAccessToken(config, auth_code):
     """Kicks off the process to reset / renew the access token by auth code."""
     oauth2_service = oauth2.Oauth2Service()
     with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
+        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
+            constants._SYSTEM_LAZADA)
 
         lazada_client = LazadaClient(
             domain=config.get("Lazada", "Domain"),
@@ -137,7 +141,8 @@ def DoSyncProcedure(config):
     """Kicks off the process to sync product quantities between systems."""
     oauth2_service = oauth2.Oauth2Service()
     with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
+        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
+            constants._SYSTEM_LAZADA)
         lazada_client = LazadaClient(
             domain=config.get("Lazada", "Domain"),
             app_key=config.get("Lazada", "AppKey"),
