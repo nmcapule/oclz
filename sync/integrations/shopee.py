@@ -2,6 +2,7 @@
 
 import calendar
 import copy
+import hmac
 import json
 import logging
 import requests
@@ -9,7 +10,6 @@ import urllib
 
 from datetime import datetime
 from hashlib import sha256
-from hmac import HMAC
 
 from sync.common.errors import (
     Error,
@@ -86,15 +86,24 @@ class ShopeeClient:
         input_copy = copy.deepcopy(input)
         input_copy["partner_id"] = self._partner_id
         input_copy["shopid"] = self._shop_id
-        input_copy["timestamp"] = calendar.timegm(datetime.utcnow().utctimetuple())
+        input_copy["timestamp"] = calendar.timegm(
+            datetime.utcnow().utctimetuple())
 
         return json.dumps(input_copy)
 
     def _Request(self, endpoint, payload=""):
         domain = _BASE_URL + endpoint
         base_signature = domain + "|" + payload
-        signature = HMAC(self._partner_key, base_signature, sha256).hexdigest()
-        headers = {"Content-Type": "application/json", "Authorization": signature}
+
+        encoded_key = bytearray(self._partner_key, 'utf-8')
+        encoded_msg = bytearray(base_signature, 'utf-8')
+        signature = hmac.new(encoded_key, encoded_msg, sha256).hexdigest()
+
+        headers = {
+            "Content-Type": "application/json",
+            "Content-Length": str(len(payload)),
+            "Authorization": signature,
+        }
 
         session = requests.Session()
         r = session.post(domain, headers=headers, data=payload)
@@ -102,9 +111,11 @@ class ShopeeClient:
         # TODO(nmcapule): Handle value error - invalid JSON error.
         parsed = json.loads(r.content)
 
-        if r.status_code >= 300 or ("error" in parsed and len(parsed["error"]) > 0):
+        if r.status_code >= 300 or ("error" in parsed and
+                                    len(parsed["error"]) > 0):
             error_code = r.status_code
-            error_description = parsed.get("msg", parsed.get("error", "request error"))
+            error_description = parsed.get("msg",
+                                           parsed.get("error", "request error"))
 
             return ShopeeRequestResult(
                 endpoint=endpoint,
@@ -113,9 +124,9 @@ class ShopeeClient:
                 error_description=error_description,
             )
         else:
-            return ShopeeRequestResult(
-                endpoint=endpoint, payload=payload, result=parsed
-            )
+            return ShopeeRequestResult(endpoint=endpoint,
+                                       payload=payload,
+                                       result=parsed)
 
     def Refresh(self):
         """Refreshes product records from Shopee.
@@ -131,12 +142,10 @@ class ShopeeClient:
         while True:
             result = self._Request(
                 "/api/v1/items/get",
-                self._ConstructPayload(
-                    {
-                        "pagination_entries_per_page": ENTRIES_PER_PAGE,
-                        "pagination_offset": offset,
-                    }
-                ),
+                self._ConstructPayload({
+                    "pagination_entries_per_page": ENTRIES_PER_PAGE,
+                    "pagination_offset": offset,
+                }),
             )
             meta_items.extend(result.result["items"])
 
@@ -154,8 +163,8 @@ class ShopeeClient:
             for _ in range(10):
                 try:
                     result = self._Request(
-                        "/api/v1/item/get", self._ConstructPayload({"item_id": item_id})
-                    )
+                        "/api/v1/item/get",
+                        self._ConstructPayload({"item_id": item_id}))
                 except ValueError as e:
                     logging.info(e)
                     continue
@@ -165,10 +174,8 @@ class ShopeeClient:
                 break
 
             if not result.result:
-                logging.info(
-                    "Error loading %s: %s"
-                    % (raw_item["item_sku"], result.error_description)
-                )
+                logging.info("Error loading %s: %s" %
+                             (raw_item["item_sku"], result.error_description))
                 continue
             raw_item = result.result["item"]
             item = ShopeeProduct(
@@ -178,7 +185,8 @@ class ShopeeClient:
             )
             items.append(item)
 
-            logging.info("Loaded items: %d out of %d" % (len(items), len(meta_items)))
+            logging.info("Loaded items: %d out of %d" %
+                         (len(items), len(meta_items)))
 
         self._products = items
 
@@ -242,7 +250,10 @@ class ShopeeClient:
             # Create XML request
             result = self._Request(
                 "/api/v1/items/update_stock",
-                self._ConstructPayload({"item_id": p.item_id, "stock": p.stocks}),
+                self._ConstructPayload({
+                    "item_id": p.item_id,
+                    "stock": p.stocks
+                }),
             )
             result.attachment = p
 
@@ -267,31 +278,35 @@ class ShopeeClient:
         """
         result = self._Request(
             "/api/v1/item/add",
-            self._ConstructPayload(
-                {
-                    "category_id": 5067,
-                    "name": product["name"],
-                    "description": product["description"],
-                    "item_sku": product["model"],
-                    "price": product["price"],
-                    "stock": product["stocks"],
-                    "weight": 0.2,  # product['weight'],
-                    "images": [{"url": "https:%s" % img} for img in product["images"]],
-                    "logistics": [
-                        {
-                            "logistic_id": 40013,  # Black Arrow Integrated
-                            "enabled": True,  # Clear this up.
-                            "size_id": 1,  # Small
-                        }
-                    ],
-                }
-            ),
+            self._ConstructPayload({
+                "category_id":
+                    5067,
+                "name":
+                    product["name"],
+                "description":
+                    product["description"],
+                "item_sku":
+                    product["model"],
+                "price":
+                    product["price"],
+                "stock":
+                    product["stocks"],
+                "weight":
+                    0.2,  # product['weight'],
+                "images": [{
+                    "url": "https:%s" % img
+                } for img in product["images"]],
+                "logistics": [{
+                    "logistic_id": 40013,  # Black Arrow Integrated
+                    "enabled": True,  # Clear this up.
+                    "size_id": 1,  # Small
+                }],
+            }),
         )
 
         if result.error_code:
-            raise CommunicationError(
-                "Error uploading product: %s" % result.error_description
-            )
+            raise CommunicationError("Error uploading product: %s" %
+                                     result.error_description)
 
         return result.result["item_id"]
 

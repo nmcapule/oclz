@@ -9,5 +9,5 @@ sandbox/
 pypy3/
 
 # Never check these in!
-config.ini
-skeo_sync.db
+*.prod.ini
+*.db

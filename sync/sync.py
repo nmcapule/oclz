@@ -22,8 +22,15 @@ from sync.integrations.opencart import OpencartClient
 from sync.integrations.shopee import ShopeeClient
 
 
-def UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client):
+def UploadFromLazadaToShopee(sync_client,
+                             lazada_client,
+                             shopee_client,
+                             read_only=False):
     """Creates mising products from Shopee using data from Lazada."""
+
+    if read_only:
+        logging.info("Skipping upload from Lazada to Shopee: read-only mode")
+        return
 
     lookup = sync_client.ProductAvailability()
     lazada_items = lookup[constants._SYSTEM_LAZADA]
@@ -60,8 +67,12 @@ def CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code):
     )
 
 
-def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client):
+def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client, read_only=False):
     """Updates Oauth2 tokens of the client for Lazada Open API platform."""
+    if read_only:
+        logging.info("Skipping update Lazada oauth2 tokens: read-only mode")
+        return
+
     lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
         constants._SYSTEM_LAZADA)
 
@@ -122,7 +133,7 @@ def DoCleanupProcedure(config):
 
 def DoLazadaResetAccessToken(config, auth_code):
     """Kicks off the process to reset / renew the access token by auth code."""
-    oauth2_service = oauth2.Oauth2Service()
+    oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
     with oauth2_service:
         lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
             constants._SYSTEM_LAZADA)
@@ -137,9 +148,10 @@ def DoLazadaResetAccessToken(config, auth_code):
         CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code=auth_code)
 
 
-def DoSyncProcedure(config):
+def DoSyncProcedure(config, read_only=False):
     """Kicks off the process to sync product quantities between systems."""
-    oauth2_service = oauth2.Oauth2Service()
+    oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
+
     with oauth2_service:
         lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
             constants._SYSTEM_LAZADA)
@@ -166,7 +178,12 @@ def DoSyncProcedure(config):
         )
 
         with sync_client:
-            sync_client.Sync()
-            UploadFromLazadaToShopee(sync_client, lazada_client, shopee_client)
+            sync_client.Sync(read_only=read_only)
+            UploadFromLazadaToShopee(sync_client,
+                                     lazada_client,
+                                     shopee_client,
+                                     read_only=read_only)
 
-        UpdateLazadaOauth2Tokens(oauth2_service, lazada_client)
+        UpdateLazadaOauth2Tokens(oauth2_service,
+                                 lazada_client,
+                                 read_only=read_only)

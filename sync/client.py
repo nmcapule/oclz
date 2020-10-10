@@ -436,7 +436,7 @@ class SyncClient:
         if result.error_code == constants._ERROR_SUCCESS:
             self._UpsertInventorySystemCacheItem(system, item)
 
-    def Sync(self):
+    def Sync(self, read_only=False):
         """Executes the whole syncing batch process."""
         self._InitSyncBatch()
 
@@ -445,7 +445,7 @@ class SyncClient:
             for system in constants._EXTERNAL_SYSTEMS:
                 system_stocks_delta, current_stocks = self._CalculateSystemStocksDelta(
                     system, model)
-                if system_stocks_delta != 0:
+                if system_stocks_delta != 0 and not read_only:
                     logging.info(
                         "Change in stocks of %s in %s: %d",
                         system,
@@ -479,10 +479,15 @@ class SyncClient:
                 item.stocks = 0
             item.last_sync_batch_id = self.sync_batch_id
 
+            if read_only:
+                logging.info("Skip updating item %s %s: read-only mode" %
+                             (item.model, item.stocks))
+                continue
+
             # Update self inventory.
             self._UpsertInventoryItem(item)
 
-            # Update external systems and inventory system cache.
+            # # Update external systems and inventory system cache.
             for system in constants._EXTERNAL_SYSTEMS:
                 try:
                     self._UpdateExternalSystemItem(system, item)

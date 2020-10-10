@@ -20,7 +20,7 @@ def ReadConfig(filename):
 def CommandSync(config, args):
     """Cleanup and do syncing of products."""
     sync.DoCleanupProcedure(config)
-    sync.DoSyncProcedure(config)
+    sync.DoSyncProcedure(config, read_only=True)
 
 
 def CommandReauthenticate(config, args):
