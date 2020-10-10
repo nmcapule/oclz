@@ -1,2 +1,13 @@
+# Defaults things to not include whatver happens.
 .vscode/
 *.pyc
+
+# Not sure why this is here :P
+sandbox/
+
+# For pypy3 downloaded binary.
+pypy3/
+
+# Never check these in!
+config.ini
+skeo_sync.db
