@@ -20,7 +20,7 @@ def ReadConfig(filename):
 def CommandSync(config, args):
     """Cleanup and do syncing of products."""
     sync.DoCleanupProcedure(config)
-    sync.DoSyncProcedure(config, read_only=True)
+    sync.DoSyncProcedure(config, read_only=args.readonly)
 
 
 def CommandReauthenticate(config, args):
@@ -74,6 +74,12 @@ if __name__ == "__main__":
         action="store",
         default="",
         help="token to use when reauthenticating to Lazada",
+    )
+    parser.add_argument(
+        "--readonly",
+        action="store_true",
+        default=False,
+        help="set to true to only read but not write",
     )
     args = parser.parse_args(sys.argv[1:])
 

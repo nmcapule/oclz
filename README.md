@@ -17,35 +17,39 @@ Configure `config.ini` and fill up the sections for Lazada, Opencart and Shopee.
 
 ### Using local machine setup
 
-1. Install pyenv and friends
+1. Setup and put your credentials in `config.ini` file.
 
-```shell
-$ # Install pyenv and friends
-$ brew install pyenv pyenv-virtualenv
-$ # Create venv for 2.7.15 under name "oclz"
-$ pyenv virtualenv 2.7.15 oclz
+```ini
+[Common]
+Store=../skeo_sync.db
+
+[Lazada]
+Domain=
+AppKey=
+AppSecret=
+
+[Opencart]
+Domain=
+Username=
+Password=
+
+[Shopee]
+ShopID=
+PartnerID=
+PartnerKey=
 ```
 
-2. Add this thing on your ~/.bashrc (or ~/.zshrc)
+2. Run with make, which will install pypy and pip and requirements.txt
 
-```
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
-```
-
-3. Activate and install "requests"
-
-```shell
-$ pyenv activate oclz
-(oclz) -> $ pip install requests
-```
-
-4. Try executing:
-
-```
-$ python sync.py --chkconfig
+```sh
+# For testing and check config only.
+$ make pypy3-run ARGS="chkconfig"
+# For syncing in read-only mode (no write).
+$ make pypy3-run ARGS="sync --readonly"
+# For syncing using a different config.
+$ make pypy3-run ARGS="sync --config=config.prod.ini"
 ```
 
 ### Formatter
 
-Use `black` formatter please.
+Use `yapf` formatter please.
