@@ -1,10 +1,11 @@
 import argparse
 import configparser
+import json
 import logging
 import os
 import sys
 
-from sync import constants, sync, oauth2
+from sync import constants, sync, oauth2, integrations
 
 DEFAULT_CONFIG_PATH = "config.ini"
 
@@ -43,6 +44,26 @@ def CommandCheckConfig(config, args):
         logging.info(lazada_oauth2_dict)
 
 
+def CommandSandbox(config, args):
+    """Free-for-all testing func."""
+    shopee_client = integrations.shopee.ShopeeClient(
+        shop_id=config.getint("Shopee", "ShopID"),
+        partner_id=config.getint("Shopee", "PartnerID"),
+        partner_key=config.get("Shopee", "PartnerKey"),
+        with_refresh=False)
+
+    item_id = 1295544772  # sku: CPLA175RRD
+    try:
+        result = shopee_client._Request(
+            "/api/v1/item/get",
+            shopee_client._ConstructPayload({"item_id": item_id}))
+    except ValueError as e:
+        logging.info(e)
+
+    # See `dumps/shopee.json` for example output.
+    logging.info(json.dumps(result.result, indent=4))
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
@@ -52,6 +73,7 @@ if __name__ == "__main__":
         "lzreauth": CommandReauthenticate,
         "cleanup": CommandCleanup,
         "chkconfig": CommandCheckConfig,
+        "sandbox": CommandSandbox,
     }
 
     # Setup argument parser.

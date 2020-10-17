@@ -1,0 +1,103 @@
+{
+  "item": {
+    "logistics": [
+      {
+        "logistic_name": "J&T Express",
+        "is_free": false,
+        "estimated_shipping_fee": 45.0,
+        "logistic_id": 40018,
+        "enabled": true
+      },
+      {
+        "logistic_name": "Ninjavan Integrated",
+        "is_free": false,
+        "estimated_shipping_fee": 45.0,
+        "logistic_id": 40015,
+        "enabled": true
+      },
+      {
+        "logistic_name": "Standard Delivery",
+        "is_free": false,
+        "estimated_shipping_fee": 40.0,
+        "logistic_id": 40066,
+        "enabled": true
+      }
+    ],
+    "original_price": 799.0,
+    "package_width": 10.0,
+    "cmt_count": 0,
+    "weight": 1.0,
+    "shopid": 20469516,
+    "currency": "PHP",
+    "create_time": 1530778997,
+    "likes": 0,
+    "images": ["https://cf.shopee.ph/file/aa05dc74f79e5dd33d1445707f9a956e"],
+    "tenures": [],
+    "is_2tier_item": true,
+    "days_to_ship": 2,
+    "package_length": 10.0,
+    "reserved_stock": 0,
+    "stock": 2,
+    "status": "NORMAL",
+    "update_time": 1598844616,
+    "description": "QUICK SPECS:\n\n - Super Strong PLA performance. Superior than normal PLA on market. 100% virgin material without cheap plastic fillers or regrind.\n - Specific plasticizer is added to increase the toughness. Vacuum sealed with desiccant.\n- Update formula to increase toughness, impact strength and elongation at break. Better extruding performance to avoid clogging, wrinkling, blobs, rough and uneven surface. Easier stick to hotbed to solve first layer issue. Advanced spooling technique to avoid filament tangling.\n - Glossy type finish. Long-term keeping the natural color and luster; Excellent toughness, More wearable and weathering proof.\n - Diameter: 1.75mm; Length: 325m; Net weight: 1kg (2.2lbs); Tolerance \u00b1 0.03mm; Spool Size: diameter 195mm + inner hub 55mm height 60mm. Printing \n - Temperature: 190-220\u00b0C (374-428\u00b0F), depending on printer model. Recommended bed temperature: 40-55\u00b0C (104-131\u00b0F).",
+    "views": 145,
+    "price": 799.0,
+    "sales": 1,
+    "discount_id": 0,
+    "item_id": 1295544772,
+    "wholesales": [],
+    "condition": "NEW",
+    "package_height": 10.0,
+    "name": "CCTREE ST PLA 3D Printing Filament 1.75mm",
+    "rating_star": 0.0,
+    "item_sku": "CPLA175RRD",
+    "variations": [
+      {
+        "status": "MODEL_NORMAL",
+        "original_price": 799.0,
+        "update_time": 1598667737,
+        "set_content": [],
+        "price": 799.0,
+        "variation_id": 60803359605,
+        "discount_id": 0,
+        "create_time": 1598667737,
+        "name": "Rose Red",
+        "is_set_item": false,
+        "variation_sku": "CCPLA175RRD",
+        "reserved_stock": 0,
+        "stock": 0
+      },
+      {
+        "status": "MODEL_NORMAL",
+        "original_price": 799.0,
+        "update_time": 1598667737,
+        "set_content": [],
+        "price": 799.0,
+        "variation_id": 60803359606,
+        "discount_id": 0,
+        "create_time": 1598667737,
+        "name": "Fluorescent Green",
+        "is_set_item": false,
+        "variation_sku": "CCPLA175FGRN",
+        "reserved_stock": 0,
+        "stock": 2
+      }
+    ],
+    "size_chart": "",
+    "is_pre_order": false,
+    "has_variation": true,
+    "attributes": [
+      {
+        "attribute_name": "Brand",
+        "is_mandatory": true,
+        "attribute_id": 9092,
+        "attribute_value": "Cctree",
+        "attribute_type": "STRING_TYPE"
+      }
+    ],
+    "category_id": 18639
+  },
+  "warning": "",
+  "request_id": "c478a6d5c30ec6508e6a9a1177c44b9c"
+}

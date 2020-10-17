@@ -79,6 +79,9 @@ class ShopeeClient:
         self._partner_key = partner_key
         self._products = []
 
+        # Map with key = variation id, value = main product id
+        self._variation_id_to_item_id = {}
+
         if with_refresh:
             self.Refresh()
 
@@ -178,12 +181,30 @@ class ShopeeClient:
                              (raw_item["item_sku"], result.error_description))
                 continue
             raw_item = result.result["item"]
-            item = ShopeeProduct(
-                item_id=raw_item["item_id"],
-                model=raw_item["item_sku"],
-                quantity=raw_item["stock"],
-            )
-            items.append(item)
+
+            # Check for variations first.
+            variations = raw_item.get("variations", [])
+            if len(variations) > 1:
+                # If yes, then track the variations instead of the parent.
+                for variation in variations:
+                    item = ShopeeProduct(
+                        item_id=variation["variation_id"],
+                        model=variation["variation_sku"],
+                        quantity=variation["stock"],
+                    )
+                    items.append(item)
+                    self._variation_id_to_item_id[item.item_id] = \
+                        raw_item["item_id"]
+                logging.info("  Found %d variations for %s" %
+                             (len(variations), raw_item["item_id"]))
+            else:
+                # Else continue as usual.
+                item = ShopeeProduct(
+                    item_id=raw_item["item_id"],
+                    model=raw_item["item_sku"],
+                    quantity=raw_item["stock"],
+                )
+                items.append(item)
 
             logging.info("Loaded items: %d out of %d" %
                          (len(items), len(meta_items)))
@@ -247,14 +268,21 @@ class ShopeeClient:
             if not p.modified:
                 continue
 
+            # Check first if the item is a variation item.
+            if p.item_id in self._variation_id_to_item_id:
+                parent_item_id = self._variation_id_to_item_id[p.item_id]
+                endpoint = "/api/v1/item/update_variation_stock"
+                payload = {
+                    "item_id": parent_item_id,
+                    "variation_id": p.item_id,
+                    "stock": p.stocks,
+                }
+            else:
+                endpoint = "/api/v1/items/update_stock"
+                payload = {"item_id": p.item_id, "stock": p.stocks}
+
             # Create XML request
-            result = self._Request(
-                "/api/v1/items/update_stock",
-                self._ConstructPayload({
-                    "item_id": p.item_id,
-                    "stock": p.stocks
-                }),
-            )
+            result = self._Request(endpoint, self._ConstructPayload(payload))
             result.attachment = p
 
             results.append(result)
