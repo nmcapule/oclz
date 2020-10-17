@@ -9,5 +9,6 @@ sandbox/
 pypy3/
 
 # Never check these in!
+*.prod.md
 *.prod.ini
 *.db

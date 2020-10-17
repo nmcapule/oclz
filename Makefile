@@ -1,9 +1,13 @@
+# Update my version of the syncer. 
+update:
+	git pull --rebase
+
 # Build and run oclz syncing script via docker.
 docker-run:
 	./scripts/docker_run.sh $(ARGS)
 
 # Build and run oclz syncing script via pypy3.
-# Example: make pypy3-run ARGS="--version"
+# Example: make pypy3-run ARGS="chkconfig --config=config.prod.ini"
 pypy3-run:
 	./scripts/pypy3_run.sh $(ARGS)
 
