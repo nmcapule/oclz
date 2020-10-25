@@ -72,7 +72,8 @@ class LazadaRequestResult:
 def sign(secret, api, parameters):
     concatenated = "%s%s" % (
         api,
-        str().join("%s%s" % (key, parameters[key]) for key in sorted(parameters)),
+        str().join(
+            "%s%s" % (key, parameters[key]) for key in sorted(parameters)),
     )
 
     h = hmac.new(
@@ -87,7 +88,12 @@ def sign(secret, api, parameters):
 class LazadaClient:
     """Implements a Lazada Client."""
 
-    def __init__(self, domain, app_key, app_secret, access_token="", with_refresh=True):
+    def __init__(self,
+                 domain,
+                 app_key,
+                 app_secret,
+                 access_token="",
+                 with_refresh=True):
         self._domain = domain
         self._app_key = app_key
         self._app_secret = app_secret
@@ -105,7 +111,12 @@ class LazadaClient:
     def access_token(self, value):
         self._access_token = value
 
-    def _Request(self, endpoint, api_parameters={}, payload="", domain=None, raw=False):
+    def _Request(self,
+                 endpoint,
+                 api_parameters={},
+                 payload="",
+                 domain=None,
+                 raw=False):
         """Creates and sends a request to the given Lazada action.
 
         Raises:
@@ -152,13 +163,13 @@ class LazadaClient:
             return result
         else:
             if raw:
-                result = LazadaRequestResult(
-                    endpoint=endpoint, payload=payload, result=res
-                )
+                result = LazadaRequestResult(endpoint=endpoint,
+                                             payload=payload,
+                                             result=res)
             else:
-                result = LazadaRequestResult(
-                    endpoint=endpoint, payload=payload, result=res.get("data", "")
-                )
+                result = LazadaRequestResult(endpoint=endpoint,
+                                             payload=payload,
+                                             result=res.get("data", ""))
 
             return result
 
@@ -182,7 +193,9 @@ class LazadaClient:
                 quantity = int(sku["quantity"])
                 reserved = quantity - int(sku["Available"] or quantity)
 
-                item = LazadaProduct(model=model, quantity=quantity, reserved=reserved)
+                item = LazadaProduct(model=model,
+                                     quantity=quantity,
+                                     reserved=reserved)
 
                 items.append(item)
 
@@ -190,15 +203,13 @@ class LazadaClient:
             parameters = {"filter": "all", "offset": offset, "limit": limit}
             result = self._Request("/products/get", parameters)
             if result.error_code:
-                raise CommunicationError(
-                    "Error communicating: %s" % result.error_description
-                )
+                raise CommunicationError("Error communicating: %s" %
+                                         result.error_description)
 
             data_parser(result.result)
 
-            logging.info(
-                "Loaded items: %d out of %d" % (len(items), outer_scope["total"])
-            )
+            logging.info("Loaded items: %d out of %d" %
+                         (len(items), outer_scope["total"]))
 
             offset += limit
             if offset >= outer_scope["total"]:
@@ -252,9 +263,8 @@ class LazadaClient:
 
         result = self._Request("/products/get", {"search": model})
         if result.error_code:
-            raise CommunicationError(
-                "Error communicating: %s" % result.error_description
-            )
+            raise CommunicationError("Error communicating: %s" %
+                                     result.error_description)
 
         data_parser(result.result)
 
@@ -330,7 +340,13 @@ class LazadaClient:
             sku_quantity.text = str(quantity)
 
             preamble = '<?xml version="1.0" encoding="utf-8" ?>'
-            return preamble + xml.etree.ElementTree.tostring(request)
+
+            # tostring returns bytes. Weird huh?
+            content = xml.etree.ElementTree.tostring(request)
+            if isinstance(content, (bytes, bytearray)):
+                content = str(content, "UTF-8")
+
+            return preamble + content
 
         results = []
         for p in products:
@@ -339,7 +355,8 @@ class LazadaClient:
 
             # Create XML request
             payload = _CreateUpdateProductPayload(p.model, p.quantity)
-            result = self._Request("/product/price_quantity/update", payload=payload)
+            result = self._Request("/product/price_quantity/update",
+                                   payload=payload)
             result.attachment = p
 
             results.append(result)
@@ -355,11 +372,13 @@ if __name__ == "__main__":
     app_secret = ""
     access_token = ""
 
-    client = LazadaClient(domain, app_key, app_secret, access_token=access_token)
+    client = LazadaClient(domain,
+                          app_key,
+                          app_secret,
+                          access_token=access_token)
 
     p = client.GetProduct("WHC0011RF")
     logging.info("%s %d %d %d" % (p.model, p.quantity, p.reserved, p.stocks))
 
     r = client.UpdateProductStocks("WHC0011RF", 4)
     logging.info("%s %s" % (r.error_code, r.error_description))
-

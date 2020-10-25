@@ -1,4 +1,5 @@
 import sqlite3
+import logging
 
 from sync import constants
 from sync.common import errors
@@ -288,6 +289,10 @@ class SyncClient:
           item: InventoryItem, The prodcut being updated.
         """
         cursor = self._db_client.cursor()
+
+        logging.info(
+            f"upsert: {item.model} - {item.stocks} {item.last_sync_batch_id}@{system}"
+        )
 
         cursor.execute(
             """

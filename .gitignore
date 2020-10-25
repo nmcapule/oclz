@@ -12,3 +12,4 @@ pypy3/
 *.prod.md
 *.prod.ini
 *.db
+**.log
