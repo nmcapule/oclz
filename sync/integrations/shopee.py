@@ -271,7 +271,7 @@ class ShopeeClient:
             # Check first if the item is a variation item.
             if p.item_id in self._variation_id_to_item_id:
                 parent_item_id = self._variation_id_to_item_id[p.item_id]
-                endpoint = "/api/v1/item/update_variation_stock"
+                endpoint = "/api/v1/items/update_variation_stock"
                 payload = {
                     "item_id": parent_item_id,
                     "variation_id": p.item_id,
