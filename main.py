@@ -26,7 +26,7 @@ def CommandSync(config, args):
 
 def CommandReauthenticate(config, args):
     """Refresh authentication token."""
-    DoLazadaResetAccessToken(config, args.token)
+    sync.DoLazadaResetAccessToken(config, args.token)
 
 
 def CommandCleanup(config, args):

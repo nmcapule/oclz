@@ -191,7 +191,8 @@ class LazadaClient:
                 sku = product["skus"][0]
                 model = sku["SellerSku"]
                 quantity = int(sku["quantity"])
-                reserved = quantity - int(sku["Available"] or quantity)
+                # Looks like Lazada ditched the "Available" keyword :P
+                reserved = quantity - int(sku.get("Available", quantity))
 
                 item = LazadaProduct(model=model,
                                      quantity=quantity,
