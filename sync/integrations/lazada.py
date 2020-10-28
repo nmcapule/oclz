@@ -184,7 +184,7 @@ class LazadaClient:
         """
         outer_scope = {"total": 0}
         offset = 0
-        limit = 100
+        limit = 50
         items = []
 
         def data_parser(data):
