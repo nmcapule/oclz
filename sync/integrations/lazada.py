@@ -24,10 +24,13 @@ from sync.common.errors import (
 class LazadaProduct(object):
     """Describes a Lazada uploaded product."""
 
-    def __init__(self, model, quantity=0, reserved=0):
+    def __init__(self, model, quantity=0, reserved=0, item_id='', sku_id=''):
         self.model = model
         self.quantity = quantity
         self.reserved = reserved
+
+        self.item_id = item_id
+        self.sku_id = sku_id
 
         self._modified = False
 
@@ -188,15 +191,23 @@ class LazadaClient:
             outer_scope["total"] = data["total_products"]
 
             for product in data["products"]:
+                # TODO(nmcapule): Looks like we have products with multiple skus.
                 sku = product["skus"][0]
                 model = sku["SellerSku"]
                 quantity = int(sku["quantity"])
+
                 # Looks like Lazada ditched the "Available" keyword :P
                 reserved = quantity - int(sku.get("Available", quantity))
 
+                # New required fields in product update.
+                item_id = product["item_id"]
+                sku_id = sku["SkuId"]
+
                 item = LazadaProduct(model=model,
                                      quantity=quantity,
-                                     reserved=reserved)
+                                     reserved=reserved,
+                                     item_id=item_id,
+                                     sku_id=sku_id)
 
                 items.append(item)
 
@@ -253,7 +264,7 @@ class LazadaClient:
                     "name": attrs["name"],
                     "description": attrs["short_description"],
                     "model": sku["SellerSku"],
-                    "stocks": int(sku["Available"]) or int(sku["quantity"]),
+                    "stocks": int(sku.get("Available", sku["quantity"])),
                     "price": float(sku["price"]),
                     "images": images,
                     "weight": float(sku["package_weight"]) or 0.9,
@@ -330,15 +341,22 @@ class LazadaClient:
           CommunicationError: Cannot communicate properly with Lazada.
         """
 
-        def _CreateUpdateProductPayload(model, quantity):
+        def _CreateUpdateProductPayload(model, quantity, item_id='', sku_id=''):
             request = xml.etree.ElementTree.Element("Request")
             product = xml.etree.ElementTree.SubElement(request, "Product")
             skus = xml.etree.ElementTree.SubElement(product, "Skus")
             sku = xml.etree.ElementTree.SubElement(skus, "Sku")
+
             sku_seller_sku = xml.etree.ElementTree.SubElement(sku, "SellerSku")
             sku_seller_sku.text = model
             sku_quantity = xml.etree.ElementTree.SubElement(sku, "Quantity")
             sku_quantity.text = str(quantity)
+
+            # New fields from https://open.lazada.com/doc/doc.htm?spm=a2o9m.11193494.0.0.1c95266bK3UTnL#?nodeId=11207&docId=108479
+            item_id = xml.etree.ElementTree.SubElement(sku, "ItemId")
+            item_id.text = item_id
+            sku_id = xml.etree.ElementTree.SubElement(sku, "SkuId")
+            sku_id.text = sku_id
 
             preamble = '<?xml version="1.0" encoding="utf-8" ?>'
 
@@ -355,7 +373,10 @@ class LazadaClient:
                 continue
 
             # Create XML request
-            payload = _CreateUpdateProductPayload(p.model, p.quantity)
+            payload = _CreateUpdateProductPayload(p.model,
+                                                  p.quantity,
+                                                  item_id=p.item_id,
+                                                  sku_id=p.sku_id)
             result = self._Request("/product/price_quantity/update",
                                    payload=payload)
             result.attachment = p
