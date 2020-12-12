@@ -283,7 +283,8 @@ class LazadaClient:
         if len(items) == 0:
             raise NotFoundError("No results for %s" % model)
         elif len(items) > 1:
-            raise MultipleResultsError("Multiple results for %s" % model)
+            logging.warn("Lazada has multiple results for %s ... carry on." % model)
+            # raise MultipleResultsError("Multiple results for %s" % model)
 
         return items[0]
 
