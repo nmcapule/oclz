@@ -291,8 +291,8 @@ class SyncClient:
         cursor = self._db_client.cursor()
 
         logging.info(
-            f"upsert: {item.model} - {item.stocks} {item.last_sync_batch_id}@{system}"
-        )
+            f"upsert: {item.model}({type(item.model)}) - {item.stocks}({type(item.stocks)})"
+            + f" {item.last_sync_batch_id}@{system}")
 
         cursor.execute(
             """
@@ -412,6 +412,8 @@ class SyncClient:
                          (item.model, system))
             return
 
+        logging.info(
+            f"Update {item.model}: {system_item.stocks} -> {item.stocks}")
         result = client.UpdateProductStocks(item.model, item.stocks)
 
         # Create a record of syncing under sync_logs table.

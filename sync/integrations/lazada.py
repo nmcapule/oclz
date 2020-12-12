@@ -191,25 +191,24 @@ class LazadaClient:
             outer_scope["total"] = data["total_products"]
 
             for product in data["products"]:
-                # TODO(nmcapule): Looks like we have products with multiple skus.
-                sku = product["skus"][0]
-                model = sku["SellerSku"]
-                quantity = int(sku["quantity"])
+                for sku in product["skus"]:
+                    model = sku["SellerSku"]
+                    quantity = int(sku["quantity"])
 
-                # Looks like Lazada ditched the "Available" keyword :P
-                reserved = quantity - int(sku.get("Available", quantity))
+                    # Looks like Lazada ditched the "Available" keyword :P
+                    reserved = quantity - int(sku.get("Available", quantity))
 
-                # New required fields in product update.
-                item_id = product["item_id"]
-                sku_id = sku["SkuId"]
+                    # New required fields in product update.
+                    item_id = product["item_id"]
+                    sku_id = sku["SkuId"]
 
-                item = LazadaProduct(model=model,
-                                     quantity=quantity,
-                                     reserved=reserved,
-                                     item_id=item_id,
-                                     sku_id=sku_id)
+                    item = LazadaProduct(model=model,
+                                        quantity=quantity,
+                                        reserved=reserved,
+                                        item_id=item_id,
+                                        sku_id=sku_id)
 
-                items.append(item)
+                    items.append(item)
 
         while True:
             parameters = {"filter": "all", "offset": offset, "limit": limit}

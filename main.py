@@ -46,6 +46,20 @@ def CommandCheckConfig(config, args):
 
 def CommandSandbox(config, args):
     """Free-for-all testing func."""
+    oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
+
+    with oauth2_service:
+        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
+            constants._SYSTEM_LAZADA)
+        lazada_client = integrations.lazada.LazadaClient(
+            domain=config.get("Lazada", "Domain"),
+            app_key=config.get("Lazada", "AppKey"),
+            app_secret=config.get("Lazada", "AppSecret"),
+            access_token=lazada_oauth2_dict["access_token"])
+        result = lazada_client.GetProduct('CCPLA175WHT')
+        logging.info(result.__dict__)
+        return
+
     shopee_client = integrations.shopee.ShopeeClient(
         shop_id=config.getint("Shopee", "ShopID"),
         partner_id=config.getint("Shopee", "PartnerID"),
