@@ -117,7 +117,10 @@ def DoCleanupProcedure(config):
         username=config.get(constants._CONFIG_OPENCART, "Username"),
         password=config.get(constants._CONFIG_OPENCART, "Password"),
     )
-    sync_client = client.SyncClient(opencart_client=opencart_client)
+    sync_client = client.SyncClient(
+        dbpath=config.get("Common", "Store"),
+        opencart_client=opencart_client,
+    )
 
     with sync_client:
         deleted_models = ListDeletedSystemModels(
@@ -209,6 +212,7 @@ def DoSyncProcedure(config, read_only=False):
             default_client = woocommerce_client
 
         sync_client = client.SyncClient(
+            db_path=config.get("Common", "Store"),
             opencart_client=opencart_client,
             lazada_client=lazada_client,
             shopee_client=shopee_client,
