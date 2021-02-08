@@ -52,4 +52,4 @@ $ make pypy3-run ARGS="sync --config=config.prod.ini"
 
 ### Formatter
 
-Use `yapf` formatter please.
+Use `black` formatter please.

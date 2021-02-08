@@ -13,8 +13,7 @@ DEFAULT_CONFIG_PATH = "config.ini"
 def ReadConfig(filename):
     """Reads and returns the ConfigParser instance."""
     config = configparser.RawConfigParser()
-    config.read(
-        os.path.join(os.path.abspath(os.path.dirname(__file__)), filename))
+    config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)), filename))
     return config
 
 
@@ -39,43 +38,18 @@ def CommandCheckConfig(config, args):
     logging.info(config.sections())
     oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
     with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
-            constants._SYSTEM_LAZADA)
+        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
         logging.info(lazada_oauth2_dict)
 
 
 def CommandSandbox(config, args):
     """Free-for-all testing func."""
-    oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
 
-    with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
-            constants._SYSTEM_LAZADA)
-        lazada_client = integrations.lazada.LazadaClient(
-            domain=config.get("Lazada", "Domain"),
-            app_key=config.get("Lazada", "AppKey"),
-            app_secret=config.get("Lazada", "AppSecret"),
-            access_token=lazada_oauth2_dict["access_token"])
-        result = lazada_client.GetProduct('CCPLA175WHT')
-        logging.info(result.__dict__)
-        return
-
-    shopee_client = integrations.shopee.ShopeeClient(
-        shop_id=config.getint("Shopee", "ShopID"),
-        partner_id=config.getint("Shopee", "PartnerID"),
-        partner_key=config.get("Shopee", "PartnerKey"),
-        with_refresh=False)
-
-    item_id = 1295544772  # sku: CPLA175RRD
-    try:
-        result = shopee_client._Request(
-            "/api/v1/item/get",
-            shopee_client._ConstructPayload({"item_id": item_id}))
-    except ValueError as e:
-        logging.info(e)
-
-    # See `dumps/shopee.json` for example output.
-    logging.info(json.dumps(result.result, indent=4))
+    woo_client = integrations.woocommerce.WooCommerceClient(
+        domain=config.get("WooCommerce", "Domain"),
+        consumer_key=config.get("WooCommerce", "ConsumerKey"),
+        consumer_secret=config.get("WooCommerce", "ConsumerSecret"),
+    )
 
 
 if __name__ == "__main__":
@@ -92,7 +66,8 @@ if __name__ == "__main__":
 
     # Setup argument parser.
     parser = argparse.ArgumentParser(
-        description="Opencart-Lazada-Shopee syncing script.")
+        description="Opencart-Lazada-Shopee syncing script."
+    )
     parser.add_argument(
         "mode",
         choices=COMMAND_LOOKUP.keys(),
