@@ -1,6 +1,5 @@
 import argparse
 import configparser
-import json
 import logging
 import os
 import sys
@@ -23,7 +22,12 @@ def CommandSync(config, args):
     sync.DoSyncProcedure(config, read_only=args.readonly)
 
 
-def CommandReauthenticate(config, args):
+def CommandShopeeGenerateAuthorizationURL(config, args):
+    """Generate authorization URL to connect Shopee app with Shopee shop."""
+    sync.DoGenerateShopeeShopAuthorizationURL(config)
+
+
+def CommandLazadaReauthenticate(config, args):
     """Refresh authentication token."""
     sync.DoLazadaResetAccessToken(config, args.token)
 
@@ -58,7 +62,8 @@ if __name__ == "__main__":
     # Command name to function mapping.
     COMMAND_LOOKUP = {
         "sync": CommandSync,
-        "lzreauth": CommandReauthenticate,
+        "shreauth": CommandShopeeGenerateAuthorizationURL,
+        "lzreauth": CommandLazadaReauthenticate,
         "cleanup": CommandCleanup,
         "chkconfig": CommandCheckConfig,
         "sandbox": CommandSandbox,

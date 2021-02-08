@@ -1,9 +1,6 @@
 """Package for syncing implementation between shops."""
 
 import logging
-import os
-import sqlite3
-import sys
 
 import sync.integrations.lazada
 import sync.integrations.opencart
@@ -12,11 +9,7 @@ import sync.integrations.woocommerce
 
 from sync import constants, client, oauth2
 from sync.common.errors import (
-    Error,
-    NotFoundError,
-    MultipleResultsError,
     CommunicationError,
-    UnhandledSystemError,
 )
 from sync.integrations.lazada import LazadaClient
 from sync.integrations.opencart import OpencartClient
@@ -131,6 +124,21 @@ def DoCleanupProcedure(config):
             sync_client, constants._SYSTEM_OPENCART
         )
         sync_client._DeleteInventoryItems(deleted_models)
+
+
+def DoGenerateShopeeShopAuthorizationURL(config):
+    """Prints shop authorization URL to connect a Shopee shop to a Shopee app."""
+    if constants._CONFIG_SHOPEE not in config.sections():
+        logging.info("Shopee is disabled. Skipping URL generation.")
+        return
+
+    shopee_client = ShopeeClient(
+        shop_id=config.getint(constants._CONFIG_SHOPEE, "ShopID"),
+        partner_id=config.getint(constants._CONFIG_SHOPEE, "PartnerID"),
+        partner_key=config.get(constants._CONFIG_SHOPEE, "PartnerKey"),
+        with_refresh=False,
+    )
+    logging.info(f"Authorization URL: {shopee_client.GenerateShopAuthorizationURL()}")
 
 
 def DoLazadaResetAccessToken(config, auth_code):

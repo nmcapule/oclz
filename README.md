@@ -53,3 +53,17 @@ $ make pypy3-run ARGS="sync --config=config.prod.ini"
 ### Formatter
 
 Use `black` formatter please.
+
+## Troubleshooting
+
+### I got an error when syncing Shopee: `your access to shop has expired`. What do?
+
+You need to refresh your app's authorization to your shop. Check out the
+[Shopee Open Platform Docs](https://open.shopee.com/documents?module=63&type=2&id=56)
+on how to setup **Shop Authorization**.
+
+There's a script included here to generate the URL that you need to visit:
+
+```sh
+$ make pypy3-run ARGS="shreauth --config=config.prod.ini"
+```
