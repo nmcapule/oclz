@@ -17,26 +17,34 @@ Configure `config.ini` and fill up the sections for Lazada, Opencart and Shopee.
 
 ### Using local machine setup
 
-1. Setup and put your credentials in `config.ini` file.
+1. Setup and put your credentials in `config.ini` file. To disable a system,
+   just comment it out in the `.ini` file.
 
 ```ini
 [Common]
 Store=../skeo_sync.db
+DefaultSystem=Opencart
+EnableLazadaToShopeeUpload=1
 
 [Lazada]
 Domain=
 AppKey=
 AppSecret=
 
+[Shopee]
+ShopID=
+PartnerID=
+PartnerKey=
+
 [Opencart]
 Domain=
 Username=
 Password=
 
-[Shopee]
-ShopID=
-PartnerID=
-PartnerKey=
+[WooCommerce]
+Domain=
+ConsumerKey=
+ConsumerSecret=
 ```
 
 2. Run with make, which will install pypy and pip and requirements.txt
