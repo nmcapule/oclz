@@ -9,7 +9,7 @@ docker-run:
 # Build and run oclz syncing script via pypy3.
 # Example: make pypy3-run ARGS="chkconfig --config=config.prod.ini"
 pypy3-run:
-	./scripts/pypy3_run.sh $(ARGS) |& tee ./logs/`date +%F`.log
+	./scripts/pypy3_run.sh $(ARGS) 2>&1 | tee ./logs/`date +%F`.log
 
 # Execute pypy if available.
 # Example: make pypy3 ARGS="--version"
