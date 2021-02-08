@@ -75,3 +75,18 @@ There's a script included here to generate the URL that you need to visit:
 ```sh
 $ make pypy3-run ARGS="shreauth --config=config.prod.ini"
 ```
+
+### How do I get / setup the access and refresh tokens for Lazada?
+
+1. Open you app on the [**APP Console**](https://open.lazada.com/app/index.htm)
+2. In `App Management > Auth Management`, add your authorized seller whitelist.
+3. In `API Explorer`, select the region and click on the **Get Token** link. Use
+   `Type = By Code` and click on the **Get Code** link. Authorize and take note
+   of the redirected URL and get the `code` part. For example:
+   ```
+   https://127.0.0.1/?code=0_xxxxxxxxxxxx
+   ```
+4. Run the following:
+   ```sh
+   $ make pypy3-run ARGS="lzreauth --config=config.prod.ini --token=0_xxxxxxxxxxxx"
+   ```

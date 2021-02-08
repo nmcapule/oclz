@@ -238,7 +238,11 @@ class ShopeeClient:
         if not results:
             raise NotFoundError("Not found in Shopee: %s" % model)
         if len(results) > 1:
-            raise MultipleResultsError("Multiple results in Shopee: %s" % model)
+            logging.error(
+                "Multiple results in Shopee: %s (item_ids: %s)"
+                % (model, [p.item_id for p in results])
+            )
+            # raise MultipleResultsError("Multiple results in Shopee: %s" % model)
 
         return copy.deepcopy(results[0])
 

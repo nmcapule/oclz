@@ -149,8 +149,6 @@ def DoLazadaResetAccessToken(config, auth_code):
     """Kicks off the process to reset / renew the access token by auth code."""
     oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
     with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
-
         lazada_client = LazadaClient(
             domain=config.get("Lazada", "Domain"),
             app_key=config.get("Lazada", "AppKey"),
