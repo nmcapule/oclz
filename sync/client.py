@@ -29,7 +29,7 @@ class SyncClient:
 
     def __init__(
         self,
-        dbpath=None,
+        dbpath,
         opencart_client=None,
         lazada_client=None,
         shopee_client=None,

@@ -212,7 +212,7 @@ def DoSyncProcedure(config, read_only=False):
             default_client = woocommerce_client
 
         sync_client = client.SyncClient(
-            db_path=config.get("Common", "Store"),
+            dbpath=config.get("Common", "Store"),
             opencart_client=opencart_client,
             lazada_client=lazada_client,
             shopee_client=shopee_client,
