@@ -1,4 +1,4 @@
-# SKEO Opencart-Lazada-Shopee Extension Accessory
+# SKEO Opencart-Lazada-Shopee-WooCommerce Extension Accessory
 
 ## Setup
 
