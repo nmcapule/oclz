@@ -2,7 +2,7 @@
 
 ## Setup
 
-Configure `config.ini` and fill up the sections for Lazada, Opencart and Shopee.
+Configure `config.ini` and fill up the sections for Lazada, Opencart, WooCommerce and Shopee.
 
 ## Environment
 
@@ -90,3 +90,11 @@ $ make pypy3-run ARGS="shreauth --config=config.prod.ini"
    ```sh
    $ make pypy3-run ARGS="lzreauth --config=config.prod.ini --token=0_xxxxxxxxxxxx"
    ```
+
+### My Lazada item stocks does not update?
+
+As of Feb 2021, using the [update endpoint](https://open.lazada.com/doc/api.htm?spm=a2o9m.11193494.0.0.761f266b7z0ooD#/api?cid=5&path=/product/price_quantity/update)
+will not work if the item being update is `Inactive`.
+
+This behavior is not documented anywhere in the Lazada documentation. Pretty iffy
+API design imo.
