@@ -94,7 +94,5 @@ $ make pypy3-run ARGS="shreauth --config=config.prod.ini"
 ### My Lazada item stocks does not update?
 
 As of Feb 2021, using the [update endpoint](https://open.lazada.com/doc/api.htm?spm=a2o9m.11193494.0.0.761f266b7z0ooD#/api?cid=5&path=/product/price_quantity/update)
-will not work if the item being update is `Inactive`.
-
-This behavior is not documented anywhere in the Lazada documentation. Pretty iffy
-API design imo.
+sometimes will not work if the quantity is set to something lower than an arbitrary
+number. This number is of unknown origin. Real great Lazada. Real great.
