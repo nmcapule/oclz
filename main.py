@@ -48,12 +48,47 @@ def CommandCheckConfig(config, args):
 
 def CommandSandbox(config, args):
     """Free-for-all testing func."""
-
-    woo_client = integrations.woocommerce.WooCommerceClient(
-        domain=config.get("WooCommerce", "Domain"),
-        consumer_key=config.get("WooCommerce", "ConsumerKey"),
-        consumer_secret=config.get("WooCommerce", "ConsumerSecret"),
+    oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
+    lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
+    lazada_client = integrations.lazada.LazadaClient(
+        domain=config.get(constants._CONFIG_LAZADA, "Domain"),
+        app_key=config.get(constants._CONFIG_LAZADA, "AppKey"),
+        app_secret=config.get(constants._CONFIG_LAZADA, "AppSecret"),
+        access_token=lazada_oauth2_dict["access_token"],
     )
+    product = lazada_client.GetProduct("2917")
+    logging.info(
+        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    )
+    product = lazada_client.GetProduct("2545")
+    logging.info(
+        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    )
+    product = lazada_client.GetProduct("2858")
+    logging.info(
+        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    )
+    product = lazada_client.GetProduct("2516")
+    logging.info(
+        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    )
+    product = lazada_client.GetProduct("2515")
+    logging.info(
+        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    )
+    product = lazada_client.GetProduct("2514")
+    logging.info(
+        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    )
+    product = lazada_client.GetProduct("1512")
+    logging.info(
+        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    )
+
+    # lazada_client.UpdateProductStocks("1512", 10)
+    # lazada_client.Refresh()
+    # product = lazada_client.GetProduct("1512")
+    # logging.info(f"{product.model}: {product.stocks}")
 
 
 if __name__ == "__main__":
