@@ -95,4 +95,12 @@ $ make pypy3-run ARGS="shreauth --config=config.prod.ini"
 
 As of Feb 2021, using the [update endpoint](https://open.lazada.com/doc/api.htm?spm=a2o9m.11193494.0.0.761f266b7z0ooD#/api?cid=5&path=/product/price_quantity/update)
 sometimes will not work if the quantity is set to something lower than an arbitrary
-number. This number is of unknown origin. Real great Lazada. Real great.
+number. This number is of unknown origin. Real great.
+
+**Update from Mar 2021**: Lazada Open API support replied to our query and said that
+this was a known issue and escalated to the regional support. 🥳 Now we wait.
+
+**Workarounds**
+1. Manual quantity changes should only be made in Lazada; or
+2. Distribute quantity changes in Lazada and another system (e.g 50 in Lazada, 50 in
+   Opencart = 100)
