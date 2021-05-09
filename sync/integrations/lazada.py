@@ -213,7 +213,7 @@ class LazadaClient:
                     items.append(item)
 
         while True:
-            parameters = {"filter": "live", "offset": offset, "limit": limit}
+            parameters = {"offset": offset, "limit": limit}
             result = self._Request("/products/get", parameters)
             if result.error_code:
                 raise CommunicationError(
