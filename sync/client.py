@@ -17,11 +17,12 @@ class InventoryItem:
 class InventorySystemCacheItem(InventoryItem):
     """Describes an inventory item for an external system."""
 
-    def __init__(self, model, system, stocks=0, last_sync_batch_id=0):
+    def __init__(self, model, system, stocks=0, last_sync_batch_id=0, not_behaving=0):
         self.model = model
         self.system = system
         self.stocks = stocks
         self.last_sync_batch_id = last_sync_batch_id
+        self.not_behaving = not_behaving
 
 
 class SyncClient:
@@ -285,7 +286,7 @@ class SyncClient:
 
         cursor.execute(
             """
-            SELECT model, system, stocks, last_sync_batch_id
+            SELECT model, system, stocks, last_sync_batch_id, not_behaving
             FROM inventory_system_cache
             WHERE model=? AND system=?
             """,
@@ -303,7 +304,27 @@ class SyncClient:
             system=result[1],
             stocks=result[2],
             last_sync_batch_id=result[3],
+            not_behaving=result[4],
         )
+    
+    def _MarkNotBehavingInventorySystemCacheItem(self, system, item, not_behaving):
+        """Updates a single InventorySystemCacheItem's not_behaving flag."""
+        cursor = self._db_client.cursor()
+
+        logging.info(
+            f"update: {item.model}({type(item.model)}) - {not_behaving}"
+        )
+
+        cursor.execute(
+            """
+            UPDATE inventory_system_cache
+            SET not_behaving=?
+            WHERE model=? AND system=?
+            """,
+            (not_behaving, item.model, system),
+        )
+
+        self._db_client.commit()
 
     def _UpsertInventorySystemCacheItem(self, system, item):
         """Updates a single InventorySystemCacheItem record.
@@ -370,7 +391,11 @@ class SyncClient:
 
         try:
             current_stocks = client.GetProduct(model).stocks
-            cached_stocks = self._GetInventorySystemCacheItem(system, model).stocks
+            cached_item = self._GetInventorySystemCacheItem(system, model)
+            if cached_item.not_behaving:
+                cached_stocks = current_stocks
+            else:
+                cached_stocks = cached_item.stocks
         except Exception as e:
             logging.warn(e)
             return 0, 0
@@ -433,7 +458,12 @@ class SyncClient:
             return
 
         logging.info(f"Update {item.model}: {system_item.stocks} -> {item.stocks}")
-        result = client.UpdateProductStocks(item.model, item.stocks)
+        try:
+            result = client.UpdateProductStocks(item.model, item.stocks)
+            self._MarkNotBehavingInventorySystemCacheItem(system, item, False)
+        except errors.PlatformNotBehavingError as e:
+            logging.info("Platform is lying: " + str(e))
+            self._MarkNotBehavingInventorySystemCacheItem(system, item, True)
 
         # Create a record of syncing under sync_logs table.
         cursor = self._db_client.cursor()

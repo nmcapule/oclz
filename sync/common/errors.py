@@ -24,3 +24,5 @@ class UnhandledSystemError(Error):
 class UnhandledTagError(Error):
     """Indicates that an XML tag is unhandled by the parser."""
 
+class PlatformNotBehavingError(Error):
+    """Indicates that the platform (usually Lazada) is lying or delayed."""

@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS inventory_system_cache (
   model TEXT,
   system TEXT,
   stocks INTEGER,
-  last_sync_batch_id INTEGER
+  last_sync_batch_id INTEGER,
+  not_behaving INTEGER DEFAULT 0
 )
 """
 _DROP_TABLE_INVENTORY_SYSTEM_CACHE = """
