@@ -17,6 +17,7 @@ from sync.common.errors import (
     NotFoundError,
     MultipleResultsError,
     CommunicationError,
+    PlatformNotBehavingError,
     UnhandledTagError,
 )
 
@@ -337,7 +338,7 @@ class LazadaClient:
         if self._with_confirm:
             updated = self.GetProductDirect(model)
             if updated.stocks != product.stocks:
-                raise CommunicationError("Product was not updated correctly in Lazada %s" % product.model)
+                raise PlatformNotBehavingError("Product was not updated correctly in Lazada %s" % product.model)
 
         return response
 
