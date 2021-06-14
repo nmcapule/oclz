@@ -462,8 +462,8 @@ class SyncClient:
             result = client.UpdateProductStocks(item.model, item.stocks)
             self._MarkNotBehavingInventorySystemCacheItem(system, item, False)
         except errors.PlatformNotBehavingError as e:
-            logging.info("Platform is lying: " + str(e))
             self._MarkNotBehavingInventorySystemCacheItem(system, item, True)
+            raise e
 
         # Create a record of syncing under sync_logs table.
         cursor = self._db_client.cursor()
