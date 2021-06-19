@@ -276,7 +276,7 @@ class LazadaClient:
 
                     items.append(item)
 
-        result = self._Request("/products/get", {"search": model})
+        result = self._Request("/products/get", {"sku_seller_list": f'["{model}"]'})
         if result.error_code:
             raise CommunicationError(
                 "Error communicating: %s" % result.error_description
