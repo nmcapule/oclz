@@ -56,13 +56,14 @@ def CommandSandbox(config, args):
         app_secret=config.get(constants._CONFIG_LAZADA, "AppSecret"),
         access_token=lazada_oauth2_dict["access_token"],
         with_confirm=True,
+        with_refresh=False,
     )
-    product = lazada_client.GetProduct("2423")
+    product = lazada_client.GetProductDirect("2033")
     logging.info(
         f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
     )
-    lazada_client.UpdateProductStocks("2423", 1)
-    logging.info("success updating product?")
+    # result = lazada_client.UpdateProductStocks("2787", 1)
+    # logging.info(f"success updating product?: {result.error_code}")
 
     # lazada_client.UpdateProductStocks("1512", 10)
     # lazada_client.Refresh()

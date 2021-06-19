@@ -460,10 +460,13 @@ class SyncClient:
         logging.info(f"Update {item.model}: {system_item.stocks} -> {item.stocks}")
         try:
             result = client.UpdateProductStocks(item.model, item.stocks)
+            error_code = result.error_code
+            error_description = result.error_description
             self._MarkNotBehavingInventorySystemCacheItem(system, item, False)
         except errors.PlatformNotBehavingError as e:
+            error_code = 999
+            error_description = str(e)
             self._MarkNotBehavingInventorySystemCacheItem(system, item, True)
-            raise e
 
         # Create a record of syncing under sync_logs table.
         cursor = self._db_client.cursor()
@@ -481,8 +484,8 @@ class SyncClient:
                 item.model,
                 system_item.stocks,
                 item.stocks,
-                int(result.error_code),
-                str(result.error_description),
+                int(error_code),
+                str(error_description),
             ),
         )
 
@@ -545,7 +548,7 @@ class SyncClient:
             # Update self inventory.
             self._UpsertInventoryItem(item)
 
-            # # Update external systems and inventory system cache.
+            # Update external systems and inventory system cache.
             for system in self._external_systems:
                 try:
                     self._UpdateExternalSystemItem(system, item)
@@ -555,3 +558,32 @@ class SyncClient:
                     logging.warn("Skipping external update: " + str(e))
                 except errors.MultipleResultsError as e:
                     logging.warn("Skipping external update due to multiple: " + str(e))
+    
+    def ResetItemQuantityToSyncBatchId(self, sync_batch_id):
+        """Sets the quantity of all items to the item's quantity in the sync_batch_id."""
+        pass
+
+    def EnforceItemQuantity(self, model, stocks):
+        """Sets the stocks / quantity of a given SKU to all systems."""
+
+        try:
+            item = self._GetInventoryItem(model)
+        except errors.NotFoundError as e:
+            logging.error("This item is not in the default client?: %s" % model)
+            return
+        
+        item.stocks = stocks
+
+        # Update self inventory.
+        self._UpsertInventoryItem(item)
+
+        # Update external systems and inventory system cache.
+        for system in self._external_systems:
+            try:
+                self._UpdateExternalSystemItem(system, item)
+            except errors.CommunicationError as e:
+                logging.error("Skipping external update due to error: " + str(e))
+            except errors.NotFoundError as e:
+                logging.warn("Skipping external update: " + str(e))
+            except errors.MultipleResultsError as e:
+                logging.warn("Skipping external update due to multiple: " + str(e))
