@@ -80,13 +80,17 @@ $ make pypy3-run ARGS="shreauth --config=config.prod.ini"
 
 1. Open you app on the [**APP Console**](https://open.lazada.com/app/index.htm)
 2. In `App Management > Auth Management`, add your authorized seller whitelist.
-3. In `API Explorer`, select the region and click on the **Get Token** link. Use
-   `Type = By Code` and click on the **Get Code** link. Authorize and take note
-   of the redirected URL and get the `code` part. For example:
+3. Open this link to redirect to your seller authorization: 
+   ```
+   https://auth.lazada.com/oauth/authorize?response_type=code&force_auth=true&redirect_uri=${app call back url}&client_id=${appkey}
+   ```
+   Replace `${app_call_back_url}` and `${appkey}` respectively.
+4. Authorize and take note of the redirected URL and get the `code` part. For
+   example:
    ```
    https://127.0.0.1/?code=0_xxxxxxxxxxxx
    ```
-4. Run the following:
+5. Run the following:
    ```sh
    $ make pypy3-run ARGS="lzreauth --config=config.prod.ini --token=0_xxxxxxxxxxxx"
    ```
