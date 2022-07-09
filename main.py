@@ -32,6 +32,11 @@ def CommandLazadaReauthenticate(config, args):
     sync.DoLazadaResetAccessToken(config, args.token)
 
 
+def CommandTiktokReauthenticate(config, args):
+    """Refresh authentication token."""
+    sync.DoTiktokResetAccessToken(config, args.token)
+
+
 def CommandCleanup(config, args):
     """Cleanup dangling data."""
     sync.DoCleanupProcedure(config)
@@ -42,26 +47,66 @@ def CommandCheckConfig(config, args):
     logging.info(config.sections())
     oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
     with oauth2_service:
-        lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
-        logging.info(lazada_oauth2_dict)
+        try:
+            lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
+                constants._SYSTEM_LAZADA
+            )
+            logging.info(lazada_oauth2_dict)
+        except Exception as e:
+            logging.error(e)
+        try:
+            tiktok_oauth2_dict = oauth2_service.GetOauth2Tokens(
+                constants._SYSTEM_TIKTOK
+            )
+            logging.info(tiktok_oauth2_dict)
+        except Exception as e:
+            logging.error(e)
 
 
 def CommandSandbox(config, args):
     """Free-for-all testing func."""
+
+    update_oauth2_dict = {
+        "access_token": "ROW_lcUwnAAAAAAdnfoUlQX2jmrN0oUL_xVy_JQLR3vxaCerOK2FjsdMFAybXqDLGmgqV6HG-hBrhgnb03b76MMglUGkPCOsUBeA",
+        "access_token_expire_in": 1657951435,
+        "refresh_token": "MWQ1N2NlODE4NjU0OTE2NTQ0ODg1MzQ2OWM0NjU5NGY3YzkzNzIwYWEwYjIwNw",
+    }
+
     oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
-    lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
-    lazada_client = integrations.lazada.LazadaClient(
-        domain=config.get(constants._CONFIG_LAZADA, "Domain"),
-        app_key=config.get(constants._CONFIG_LAZADA, "AppKey"),
-        app_secret=config.get(constants._CONFIG_LAZADA, "AppSecret"),
-        access_token=lazada_oauth2_dict["access_token"],
-        with_confirm=True,
+    oauth2_service.SaveOauth2Tokens(
+        constants._SYSTEM_TIKTOK,
+        update_oauth2_dict.get("access_token"),
+        update_oauth2_dict.get("refresh_token"),
+        update_oauth2_dict.get("access_token_expire_in"),
+    )
+
+    tiktok_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_TIKTOK)
+    tiktok_client = integrations.tiktok.TiktokClient(
+        domain=config.get(constants._CONFIG_TIKTOK, "Domain"),
+        app_key=config.get(constants._CONFIG_TIKTOK, "AppKey"),
+        app_secret=config.get(constants._CONFIG_TIKTOK, "AppSecret"),
+        access_token=tiktok_oauth2_dict["access_token"],
+        shop_id=config.get(constants._CONFIG_TIKTOK, "ShopID"),
+        warehouse_id=config.get(constants._CONFIG_TIKTOK, "WarehouseID"),
         with_refresh=False,
     )
-    product = lazada_client.GetProductDirect("2033")
-    logging.info(
-        f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
-    )
+    sync.UpdateTiktokOauth2Tokens(oauth2_service, tiktok_client)
+
+    # oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
+    # lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_LAZADA)
+    # lazada_client = integrations.lazada.LazadaClient(
+    #     domain=config.get(constants._CONFIG_LAZADA, "Domain"),
+    #     app_key=config.get(constants._CONFIG_LAZADA, "AppKey"),
+    #     app_secret=config.get(constants._CONFIG_LAZADA, "AppSecret"),
+    #     access_token=lazada_oauth2_dict["access_token"],
+    #     with_confirm=True,
+    #     with_refresh=False,
+    # )
+    # product = lazada_client.GetProductDirect("2033")
+    # logging.info(
+    #     f"sku:{product.model} item_id:{product.item_id} sku_id:{product.sku_id} stocks:{product.stocks}"
+    # )
+
     # result = lazada_client.UpdateProductStocks("2787", 1)
     # logging.info(f"success updating product?: {result.error_code}")
 
@@ -79,6 +124,7 @@ if __name__ == "__main__":
         "sync": CommandSync,
         "shreauth": CommandShopeeGenerateAuthorizationURL,
         "lzreauth": CommandLazadaReauthenticate,
+        "tkreauth": CommandTiktokReauthenticate,
         "cleanup": CommandCleanup,
         "chkconfig": CommandCheckConfig,
         "sandbox": CommandSandbox,
@@ -86,7 +132,7 @@ if __name__ == "__main__":
 
     # Setup argument parser.
     parser = argparse.ArgumentParser(
-        description="Opencart-Lazada-Shopee syncing script."
+        description="Opencart-Lazada-Shopee-WooCommerce-Tiktok syncing script."
     )
     parser.add_argument(
         "mode",

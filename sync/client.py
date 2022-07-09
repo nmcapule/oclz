@@ -35,12 +35,14 @@ class SyncClient:
         lazada_client=None,
         shopee_client=None,
         woocommerce_client=None,
+        tiktok_client=None,
         default_client=None,
     ):
         self._opencart_client = opencart_client
         self._lazada_client = lazada_client
         self._shopee_client = shopee_client
         self._woocommerce_client = woocommerce_client
+        self._tiktok_client = tiktok_client
         self._default_client = default_client
 
         self._external_systems = []
@@ -56,6 +58,9 @@ class SyncClient:
         if self._woocommerce_client:
             self._external_systems.append(constants._SYSTEM_WOOCOMMERCE)
             logging.info(f"Enabling system: {constants._SYSTEM_WOOCOMMERCE}")
+        if self._tiktok_client:
+            self._external_systems.append(constants._SYSTEM_TIKTOK)
+            logging.info(f"Enabling system: {constants._SYSTEM_TIKTOK}")
 
         self._db_client = self._Connect(dbpath or constants._DEFAULT_DB_PATH)
         self.sync_batch_id = -1
@@ -137,7 +142,7 @@ class SyncClient:
           system: str, The system code.
 
         Returns:
-          LazadaClient or OpencartClient or ShopeeClient or WooCommerceClient, The client to use.
+          LazadaClient or OpencartClient or ShopeeClient or WooCommerceClient or TiktokClient, The client to use.
 
         Raises:
           UnhandledSystemError, The given system code not yet supported.
@@ -150,6 +155,8 @@ class SyncClient:
             return self._shopee_client
         elif system == constants._SYSTEM_WOOCOMMERCE:
             return self._woocommerce_client
+        elif system == constants._SYSTEM_TIKTOK:
+            return self._tiktok_client
         else:
             raise UnhandledSystemError("System is not handled: %s" % system)
 
@@ -306,14 +313,12 @@ class SyncClient:
             last_sync_batch_id=result[3],
             not_behaving=result[4],
         )
-    
+
     def _MarkNotBehavingInventorySystemCacheItem(self, system, item, not_behaving):
         """Updates a single InventorySystemCacheItem's not_behaving flag."""
         cursor = self._db_client.cursor()
 
-        logging.info(
-            f"update: {item.model}({type(item.model)}) - {not_behaving}"
-        )
+        logging.info(f"update: {item.model}({type(item.model)}) - {not_behaving}")
 
         cursor.execute(
             """
@@ -558,7 +563,7 @@ class SyncClient:
                     logging.warn("Skipping external update: " + str(e))
                 except errors.MultipleResultsError as e:
                     logging.warn("Skipping external update due to multiple: " + str(e))
-    
+
     def ResetItemQuantityToSyncBatchId(self, sync_batch_id):
         """Sets the quantity of all items to the item's quantity in the sync_batch_id."""
         pass
@@ -571,7 +576,7 @@ class SyncClient:
         except errors.NotFoundError as e:
             logging.error("This item is not in the default client?: %s" % model)
             return
-        
+
         item.stocks = stocks
 
         # Update self inventory.
