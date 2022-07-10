@@ -5,12 +5,8 @@ import hashlib
 import hmac
 import logging
 import requests
-import string
 import time
-import urllib
 import xml.etree.ElementTree
-
-from hashlib import sha256
 
 from sync.common.errors import (
     Error,

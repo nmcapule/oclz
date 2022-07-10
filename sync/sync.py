@@ -7,6 +7,7 @@ import sync.integrations.lazada
 import sync.integrations.opencart
 import sync.integrations.shopee
 import sync.integrations.woocommerce
+import sync.integrations.tiktok
 
 from sync import constants, client, oauth2
 from sync.common.errors import (
@@ -16,6 +17,7 @@ from sync.integrations.lazada import LazadaClient
 from sync.integrations.opencart import OpencartClient
 from sync.integrations.shopee import ShopeeClient
 from sync.integrations.woocommerce import WooCommerceClient
+from sync.integrations.tiktok import TiktokClient
 
 
 def UploadFromLazadaToShopee(
@@ -85,6 +87,57 @@ def UpdateLazadaOauth2Tokens(oauth2_service, lazada_client, read_only=False):
         update_oauth2_dict["access_token"],
         update_oauth2_dict["refresh_token"],
         update_oauth2_dict["expires_in"],
+    )
+
+
+def CreateTiktokOauth2Tokens(oauth2_service, tiktok_client, code):
+    """Creates Oauth2 tokens of the client for TiktokOpen API platform."""
+    result = tiktok_client._Request(
+        "/api/token/getAccessToken",
+        {"code": code},
+        domain="https://auth.tiktok-shops.com",
+    )
+    if result.error_code != constants._ERROR_SUCCESS:
+        raise CommunicationError("Error creating oauth2: %s" % result.error_description)
+
+    update_oauth2_dict = result.result.get("data")
+
+    oauth2_service.SaveOauth2Tokens(
+        constants._SYSTEM_TIKTOK,
+        update_oauth2_dict.get("access_token"),
+        update_oauth2_dict.get("refresh_token"),
+        update_oauth2_dict.get("access_token_expire_in"),
+    )
+
+
+def UpdateTiktokOauth2Tokens(oauth2_service, tiktok_client, read_only=False):
+    """Updates Oauth2 tokens of the client for Tiktok API platform."""
+    if read_only:
+        logging.info("Skipping update Tiktok oauth2 tokens: read-only mode")
+        return
+
+    tiktok_oauth2_dict = oauth2_service.GetOauth2Tokens(constants._SYSTEM_TIKTOK)
+
+    result = tiktok_client._Request(
+        "/api/token/refreshToken",
+        {
+            "app_key": tiktok_client._app_key,
+            "app_secret": tiktok_client._app_secret,
+            "refresh_token": tiktok_oauth2_dict["refresh_token"],
+            "grant_type": "refresh_token",
+        },
+        domain="https://auth.tiktok-shops.com",
+    )
+    if result.error_code != constants._ERROR_SUCCESS:
+        raise CommunicationError("Error updating oauth2: %s" % result.error_description)
+
+    update_oauth2_dict = result.result.get("data")
+
+    oauth2_service.SaveOauth2Tokens(
+        constants._SYSTEM_TIKTOK,
+        update_oauth2_dict.get("access_token"),
+        update_oauth2_dict.get("refresh_token"),
+        update_oauth2_dict.get("access_token_expire_in"),
     )
 
 
@@ -159,6 +212,20 @@ def DoLazadaResetAccessToken(config, auth_code):
         CreateLazadaOauth2Tokens(oauth2_service, lazada_client, code=auth_code)
 
 
+def DoTiktokResetAccessToken(config, auth_code):
+    """Kicks off the process to reset / renew the access token by auth code."""
+    oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
+    with oauth2_service:
+        tiktok_client = TiktokClient(
+            domain=config.get("Tiktok", "Domain"),
+            app_key=config.get("Tiktok", "AppKey"),
+            app_secret=config.get("Tiktok", "AppSecret"),
+            with_refresh=False,
+        )
+
+        CreateTiktokOauth2Tokens(oauth2_service, tiktok_client, code=auth_code)
+
+
 def DoSyncProcedure(config, read_only=False):
     """Kicks off the process to sync product quantities between systems."""
     oauth2_service = oauth2.Oauth2Service(dbpath=config.get("Common", "Store"))
@@ -168,6 +235,7 @@ def DoSyncProcedure(config, read_only=False):
         opencart_client = None
         shopee_client = None
         woocommerce_client = None
+        tiktok_client = None
 
         if constants._CONFIG_LAZADA in config.sections():
             lazada_oauth2_dict = oauth2_service.GetOauth2Tokens(
@@ -199,6 +267,18 @@ def DoSyncProcedure(config, read_only=False):
                     constants._CONFIG_WOOCOMMERCE, "ConsumerSecret"
                 ),
             )
+        if constants._CONFIG_TIKTOK in config.sections():
+            tiktok_oauth2_dict = oauth2_service.GetOauth2Tokens(
+                constants._SYSTEM_TIKTOK
+            )
+            tiktok_client = TiktokClient(
+                domain=config.get(constants._CONFIG_TIKTOK, "Domain"),
+                app_key=config.get(constants._CONFIG_TIKTOK, "AppKey"),
+                app_secret=config.get(constants._CONFIG_TIKTOK, "AppSecret"),
+                access_token=tiktok_oauth2_dict["access_token"],
+                shop_id=config.get(constants._CONFIG_TIKTOK, "ShopID"),
+                warehouse_id=config.get(constants._CONFIG_TIKTOK, "WarehouseID"),
+            )
 
         default_client = None
         if config.get("Common", "DefaultSystem") == constants._CONFIG_OPENCART:
@@ -209,6 +289,8 @@ def DoSyncProcedure(config, read_only=False):
             default_client = shopee_client
         if config.get("Common", "DefaultSystem") == constants._CONFIG_WOOCOMMERCE:
             default_client = woocommerce_client
+        if config.get("Common", "DefaultSystem") == constants._CONFIG_TIKTOK:
+            default_client = tiktok_client
 
         sync_client = client.SyncClient(
             dbpath=config.get("Common", "Store"),
@@ -216,6 +298,7 @@ def DoSyncProcedure(config, read_only=False):
             lazada_client=lazada_client,
             shopee_client=shopee_client,
             woocommerce_client=woocommerce_client,
+            tiktok_client=tiktok_client,
             default_client=default_client,
         )
 
@@ -230,4 +313,8 @@ def DoSyncProcedure(config, read_only=False):
             if lazada_client:
                 UpdateLazadaOauth2Tokens(
                     oauth2_service, lazada_client, read_only=read_only
+                )
+            if tiktok_client:
+                UpdateTiktokOauth2Tokens(
+                    oauth2_service, tiktok_client, read_only=read_only
                 )

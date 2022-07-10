@@ -220,4 +220,3 @@ if __name__ == "__main__":
 
     p = client.GetProduct("WHC0011RF")
     logging.info("%s %d %d" % (p.model, p.quantity, p.stocks))
-
