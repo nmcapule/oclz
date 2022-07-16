@@ -94,7 +94,12 @@ def CreateTiktokOauth2Tokens(oauth2_service, tiktok_client, code):
     """Creates Oauth2 tokens of the client for TiktokOpen API platform."""
     result = tiktok_client._Request(
         "/api/token/getAccessToken",
-        {"code": code},
+        {
+            "app_key": tiktok_client._app_key,
+            "app_secret": tiktok_client._app_secret,
+            "auth_code": code,
+            "grant_type": "authorized_code",
+        },
         domain="https://auth.tiktok-shops.com",
     )
     if result.error_code != constants._ERROR_SUCCESS:
