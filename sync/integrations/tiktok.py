@@ -157,6 +157,8 @@ class TiktokClient:
         else:
             r = requests.get(encoded_url)
 
+        logging.info(r.text)
+
         if raw:
             res = r.text
         else:
