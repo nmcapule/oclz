@@ -308,13 +308,6 @@ def DoSyncProcedure(config, read_only=False):
         )
 
         with sync_client:
-            sync_client.Sync(read_only=read_only)
-            if lazada_client and json.loads(
-                config.get("Common", "EnableLazadaToShopeeUpload")
-            ):
-                UploadFromLazadaToShopee(
-                    sync_client, lazada_client, shopee_client, read_only=read_only
-                )
             if lazada_client:
                 UpdateLazadaOauth2Tokens(
                     oauth2_service, lazada_client, read_only=read_only
@@ -322,4 +315,11 @@ def DoSyncProcedure(config, read_only=False):
             if tiktok_client:
                 UpdateTiktokOauth2Tokens(
                     oauth2_service, tiktok_client, read_only=read_only
+                )
+            sync_client.Sync(read_only=read_only)
+            if lazada_client and json.loads(
+                config.get("Common", "EnableLazadaToShopeeUpload")
+            ):
+                UploadFromLazadaToShopee(
+                    sync_client, lazada_client, shopee_client, read_only=read_only
                 )
