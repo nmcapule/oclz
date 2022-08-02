@@ -537,6 +537,9 @@ class SyncClient:
                 except errors.NotFoundError as e:
                     logging.error("This item is not in the default client?: %s" % model)
                     continue
+            except Exception as e:
+                logging.error("This item can't be retrieved from the database: %s" % model)
+                continue
 
             item.stocks += stocks_delta
             if item.stocks <= 0:
