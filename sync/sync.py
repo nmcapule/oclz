@@ -251,7 +251,12 @@ def DoSyncProcedure(config, read_only=False):
                 app_key=config.get(constants._CONFIG_LAZADA, "AppKey"),
                 app_secret=config.get(constants._CONFIG_LAZADA, "AppSecret"),
                 access_token=lazada_oauth2_dict["access_token"],
+                with_refresh=False,
             )
+            UpdateLazadaOauth2Tokens(
+                oauth2_service, lazada_client, read_only=read_only
+            )
+            lazada_client.Refresh()
         if constants._CONFIG_OPENCART in config.sections():
             opencart_client = OpencartClient(
                 domain=config.get(constants._CONFIG_OPENCART, "Domain"),
@@ -283,7 +288,12 @@ def DoSyncProcedure(config, read_only=False):
                 access_token=tiktok_oauth2_dict["access_token"],
                 shop_id=config.get(constants._CONFIG_TIKTOK, "ShopID"),
                 warehouse_id=config.get(constants._CONFIG_TIKTOK, "WarehouseID"),
+                with_refresh=False,
             )
+            UpdateTiktokOauth2Tokens(
+                oauth2_service, tiktok_client, read_only=read_only
+            )
+            tiktok_client.Refresh()
 
         default_client = None
         if config.get("Common", "DefaultSystem") == constants._CONFIG_OPENCART:
@@ -308,14 +318,6 @@ def DoSyncProcedure(config, read_only=False):
         )
 
         with sync_client:
-            if lazada_client:
-                UpdateLazadaOauth2Tokens(
-                    oauth2_service, lazada_client, read_only=read_only
-                )
-            if tiktok_client:
-                UpdateTiktokOauth2Tokens(
-                    oauth2_service, tiktok_client, read_only=read_only
-                )
             sync_client.Sync(read_only=read_only)
             if lazada_client and json.loads(
                 config.get("Common", "EnableLazadaToShopeeUpload")

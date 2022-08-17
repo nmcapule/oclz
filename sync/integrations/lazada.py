@@ -116,7 +116,9 @@ class LazadaClient:
     def access_token(self, value):
         self._access_token = value
 
-    def _Request(self, endpoint, api_parameters={}, payload="", domain=None, raw=False):
+    def _Request(
+        self, endpoint, api_parameters={}, payload="", domain=None, raw=False, retry=3
+    ):
         """Creates and sends a request to the given Lazada action.
 
         Raises:
@@ -152,6 +154,15 @@ class LazadaClient:
         if "code" in res and res["code"] != "0":
             error_code = res["code"]
             error_description = res["message"]
+
+            # Crude workaround for retry mechanism when hitting API access limits.
+            if retry > 0:
+                if "Api access frequency exceeds" in error_description:
+                    logging.info("Hit the API frequency limit... retrying in 1 second")
+                    time.sleep(1)
+                    return self._Request(
+                        endpoint, api_parameters, payload, domain, raw, retry - 1
+                    )
 
             result = LazadaRequestResult(
                 endpoint=endpoint,
@@ -330,11 +341,13 @@ class LazadaClient:
         product.stocks = stocks
 
         response = self.UpdateProducts([product])[0]
-        
+
         if self._with_confirm:
             updated = self.GetProductDirect(model)
             if updated.stocks != product.stocks:
-                raise PlatformNotBehavingError("Product was not updated correctly in Lazada %s" % product.model)
+                raise PlatformNotBehavingError(
+                    "Product was not updated correctly in Lazada %s" % product.model
+                )
 
         return response
 
