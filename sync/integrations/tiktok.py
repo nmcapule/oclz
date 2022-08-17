@@ -202,7 +202,7 @@ class TiktokClient:
             for product in r.result.get("data").get("products"):
                 logging.info(product)
                 product_id = product.get("id")
-                for sku in product.get("skus"):
+                for sku in product.get("skus", []):
                     stocks = 0
                     for stock_info in sku.get("stock_infos"):
                         stocks += stock_info.get("available_stock", 0)
