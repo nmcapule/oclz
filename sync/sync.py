@@ -37,7 +37,7 @@ def UploadFromLazadaToShopee(
     for model in items_to_upload:
         try:
             lazada_product = lazada_client.GetProductDirect(model)
-            shopee_item_id = shopee_client.CreateProduct(lazada_product)
+            # shopee_item_id = shopee_client.CreateProduct(lazada_product)
         except Exception as e:
             logging.error("Oh no error syncing %s: %s" % (model, str(e)))
 

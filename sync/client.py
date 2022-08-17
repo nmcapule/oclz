@@ -350,7 +350,7 @@ class SyncClient:
             SET stocks=?, last_sync_batch_id=?
             WHERE model=? AND system=?
             """,
-            (item.stocks, item.last_sync_batch_id, item.model, system),
+            (int(item.stocks), item.last_sync_batch_id, item.model, system),
         )
 
         if cursor.rowcount == 0:
@@ -538,7 +538,9 @@ class SyncClient:
                     logging.error("This item is not in the default client?: %s" % model)
                     continue
             except Exception as e:
-                logging.error("This item can't be retrieved from the database: %s" % model)
+                logging.error(
+                    "This item can't be retrieved from the database: %s" % model
+                )
                 continue
 
             item.stocks += stocks_delta
